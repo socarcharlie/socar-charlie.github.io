@@ -1,0 +1,2610 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.6">Jekyll</generator><link href="https://tech.socarcorp.kr/feed.xml" rel="self" type="application/atom+xml" /><link href="https://tech.socarcorp.kr/" rel="alternate" type="text/html" /><updated>2022-01-18T03:10:50+00:00</updated><id>https://tech.socarcorp.kr/feed.xml</id><title type="html">SOCAR Tech Blog</title><subtitle>쏘카 기술 블로그</subtitle><author><name>SOCAR</name></author><entry><title type="html">자동차 배터리를 더 소중하게 공학적으로 관리하기 #2</title><link href="https://tech.socarcorp.kr/mobility/2022/01/18/socar-mobility-lab-battery-management-process-second-stage.html" rel="alternate" type="text/html" title="자동차 배터리를 더 소중하게 공학적으로 관리하기 #2" /><published>2022-01-18T03:00:00+00:00</published><updated>2022-01-18T03:00:00+00:00</updated><id>https://tech.socarcorp.kr/mobility/2022/01/18/socar-mobility-lab-battery-management-process-second-stage</id><content type="html" xml:base="https://tech.socarcorp.kr/mobility/2022/01/18/socar-mobility-lab-battery-management-process-second-stage.html">&lt;p&gt;안녕하세요. 쏘카 모빌리티 Lab의 찰리입니다. &lt;a href=&quot;https://socarcharlie.github.io/mobility/2021/07/20/socar-mobility-lab-battery-management-process-first-stage.html&quot;&gt;지난 글&lt;/a&gt;에서는 10,000대가 넘는 차량을 운영하는 쏘카에서, 차량의 배터리 상태 관리를 위한 공학적인 접근 방식과 해결 방법에 대해 다뤘습니다. 이번 글에서는 배터리 방전을 사전에 막기 위해 알람 서비스를 도입하고, 운영에 도입한 내용을 공유해 보고자 합니다. 다소 전문적인 지식이 필요했던 지난번 글에 비해 이번 글은 누구나 쉽게 읽으실 수 있을 거라 생각합니다.&lt;/p&gt;
+
+&lt;h2 id=&quot;목차&quot;&gt;목차&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;의도치 않은 실수들로 생기는 배터리 방전&lt;/li&gt;
+  &lt;li&gt;적당한 차량 상태 조회 주기 찾기&lt;/li&gt;
+  &lt;li&gt;차량이 방전될 상태인지 판단하기&lt;/li&gt;
+  &lt;li&gt;그래서 알림은 어떻게 보내지나요?&lt;/li&gt;
+  &lt;li&gt;조금만 더 세심하게 다뤄주세요. 다 같이 쓰는 차니까요.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;의도치-않은-실수들로-생기는-배터리-방전&quot;&gt;의도치 않은 실수들로 생기는 배터리 방전&lt;/h2&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://socarcharlie.github.io/mobility/2021/07/20/socar-mobility-lab-battery-management-process-first-stage.html&quot;&gt;지난 글&lt;/a&gt;을 보면 쏘카에서 일어나는 배터리 방전의 60% 이상이 고객의 사용 습관과 밀접하다고 말씀드렸습니다. 그러나 배터리 방전을 고객께서 의도적으로 내지는 않습니다. 대부분은 어떤 상황에서 방전이 되는지 잘 모르시기 때문에 일어나곤 합니다.&lt;/p&gt;
+
+&lt;p&gt;저 역시 의도치 않게 쏘카 차량의 방전을 일으킬만할 경험이 있습니다. 제가 보유하고 있는 차는 시동 버튼을 두 번 눌러 시동을 완전히 종료시키는 반면, 쏘카 차량 (현대/기아차, Jeep)은 시동 버튼을 한 번만 눌러도 시동 종료가 이루어졌습니다. 기어 상태도 시동을 종료하면 자동으로 주차 모드로 바뀌는 제 차와 달리 기어 봉을 직접 P로 옮겨주어야 했습니다. 사실 자동 변속기 차량에서 시동을 P에 두고 시동을 종료하는 일은 대단히 당연합니다. 단지 제가 익숙한 방식과 조금 달랐기에 이런 실수를 저질렀고, 그 결과 차량 반납 불가의 메시지를 받았습니다. 저와 비슷한 상황에 놓였던 고객과 핸들러 입장에서 가사동이나 기어본 P가 아닌 D 혹은 R 모드 중 강제 반납으로 인한 방전 상황 노출이 대단히 쉬운 일임을 깨닫게 된 순간이었습니다.&lt;/p&gt;
+
+&lt;p&gt;주위에 비슷한 사례가 있나 싶어 지인들에게 물어보니, 쏘카 패스를 구독하는 저의 친구 역시 비슷한 경험이 있었습니다. 몹시 더운 여름 어느날 주차 중에 에어컨을 켜고 싶어서 가시동 상태로 송풍기를 열심히 돌리면서 노래도 들었다고 합니다. 그렇게 한 시간 정도가 지났고 차를 다시 움직여 이동하려고 하는데 시동이 걸리지 않았다고 합니다. 친구는 가시동 상태에서 송풍기를 돌리고(에어컨 컴프레셔는 멈춰있어서 바람만 나왔을텐데) 차량 스피커로 음악을 들으면 필요한 전력을 모두 차량 배터리에서 가져 온다는 사실을 몰랐습니다.&lt;/p&gt;
+
+&lt;p&gt;이 외에도 고객께서 전혀 의도하지 않았지만 차량의 전원관리에 나쁜 영향을 미칠 수 있는 차량 운용으로 인해 방전이 생기는 경우는 다양할 거라 생각했습니다. 어떻게 해야 고객께서도 방전을 겪지 않아 기분이 좋고 쏘카도 관리 이슈를 줄일 수 있을까요?&lt;/p&gt;
+
+&lt;p&gt;저는 이렇게 생각했습니다.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;“고객께서 실수하지 않도록 우리가 도와드리자. 알림을 보내드리면 상황 인지를 빨리하실 수 있겠지?”&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;결론은 고객에게 어떤 형태로든 &lt;strong&gt;“알림을 드리자!”&lt;/strong&gt;였습니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;적당한-차량-상태-조회-주기-찾기&quot;&gt;적당한 차량 상태 조회 주기 찾기&lt;/h2&gt;
+
+&lt;p&gt;고객에게 방전될 수 있는 상황임을 알리는 알림을 보내기 위해서는, 먼저 현재 차량의 상태를 알아야 합니다. 쏘카 차량에는 관제 장치가 붙어있는데, 이 장치로부터 차량 상태에 대한 데이터를 주기적으로 받을 수 있습니다. 데이터를 받는 주기는 다음과 같이 3가지 상황에 따라 다릅니다.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;일반 주행 혹은 가시동 상황일 때: 2분에 1회&lt;/li&gt;
+  &lt;li&gt;시동 OFF 후 정차 중인 상황일 때: 30분에 1회&lt;/li&gt;
+  &lt;li&gt;문열림/문잠금/시동 상태의 변화가 일어날 때: 각각 1회&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;위의 주기는 하나의 차량에서 어떤 주기로 차량 정보 데이터를 올려주는지에 대한 내용입니다. 쏘카에서 운영하는 총 차량은 10,000대가 넘고, 차량 각각에서 일어나는 상태 변화 시점은 제각각입니다. 따라서 하나의 시스템이 많은 차량을 다루기 위해선 일정 시점마다 전체 차량을 조회하고, 각 차량의 상태 시점과 이벤트 시점의 시간 차이와 상태 변화 추이를 각각 계산해야 합니다. 따라서 전체 차량의 상태 조회 주기가 너무 늦으면 방전 상태를 늦게 판단할 가능성이 높아지고, 너무 빠르게 하면 알람이 너무 자주 가게 됩니다. 따라서 &lt;strong&gt;전체 차량 상태 조회의 적당한 주기를 찾는 것이 중요합니다.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;이를 위해 가장 먼저 해야 할 일은 차량 방전이 일어날만한 시나리오를 생각해 보고, 각 &lt;strong&gt;시나리오별 전류가 어느 정도로 빨리 소모되는지 측정하는 것&lt;/strong&gt;이었습니다. 또한 차종별로 장착된 부품의 사이즈나 전력 소모량이 모두 다르기 때문에, 각 차종별로 위의 시나리오에 맞추어 실험을 따로 진행해야 하는 것도 고려해야 했습니다.&lt;/p&gt;
+
+&lt;p&gt;처음에는 차량 방전이 일어나기 쉬운 사용 시나리오를 찾는 일부터 시작해보았습니다. 가시동 중 노래 듣기, 송풍기(1~n단까지 모두 다른 케이스로 가정했음), 전조등, 미등, 상향등, 경고등, 실내등 등등 모든 전력 소모 및 방전 요소를 모두 조합한 시나리오를 세웠고 &lt;strong&gt;조합한 시나리오별로 전류가 얼마정도 소모되는지 모두 측정&lt;/strong&gt;하기로 했습니다.&lt;/p&gt;
+
+&lt;p&gt;전류 측정은 초등학교 시절 한번 즈음 모두가 거쳐갔을 라디오 조립 키트의 전류 측정보다 아주 조금 어려운 정도입니다 (&lt;del&gt;쉽다는 말을 어렵게 해 보았습니다.&lt;/del&gt;). 직접 실험을 해보고 싶으신 분도 계시리라 생각하여 측정법에 대해 설명드리겠습니다.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;우선 배터리의 - 단자에 연결된 터미널을 제거합니다.&lt;/li&gt;
+  &lt;li&gt;배터리가 제거되는 순간 자동차에 연결된 IBS 단자 (Intelligent Battery Sensor)는 초기화됩니다. 이 센서는 배터리의 상태와 관련된 값을 수집하는 센서인데 이 센서의 초기화 부분은 차량 제조사와 차종마다 모두 상이하므로 다루지 않도록 하겠습니다. 차량 제조사 매뉴얼에 보면 이 센서의 초기화와 관련된 내용이 상세히 적혀 있으니 참고하시면 좋습니다.&lt;/li&gt;
+  &lt;li&gt;전력계의 모드를 전류 측정으로 전환합니다.&lt;/li&gt;
+  &lt;li&gt;제거된 터미널에 전력계의 양극 부를 연결하고, 배터리의 - 단자에는 전력계 음극 부를 연결합니다. 이때 측정기의 리드 케이블은 클립형이 좋으며 길고 튼튼할수록 좋습니다. 측정할 때는 보닛을 닫아두는 게 좋기 때문입니다.&lt;/li&gt;
+  &lt;li&gt;잘 연결이 되었다면 전력계에 전류 값이 표시됩니다.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;위의 설명은 고전적인 측정기를 사용하는 방법입니다. 요즈음에는 블루투스로 연동하여 핸드폰으로 값을 받을 수 있는 전류 측정기가 있어서 측정이 비교적 쉽습니다. 블루투스 전류 측정기의 자동차 단자 연결법도 위와 동일합니다.&lt;/p&gt;
+
+&lt;p&gt;측정기 연결이 잘 되었다면 미리 세워둔 시나리오별로 전류 소모의 변화를 모두 기록합니다. 다양한 차종에 대해 실험하다 보니 하루에 끝내기는 어려웠고 실험 완료까지 수 일이 걸렸습니다. 측정이 완료된 시점에서 보니 생각보다 방전을 일으키키 정말 쉬운 물건이 자동차구나 싶었습니다.&lt;/p&gt;
+
+&lt;p&gt;시나리오 중 한 가지 예를 아래에 공유드리도록 하겠습니다. 실험값과 차종은 모두 예시입니다.&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt; &lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;Avg[A]&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;Max[A]&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;검출 여부&lt;/th&gt;
+      &lt;th style=&quot;text-align: right&quot;&gt;비고&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;실내등(개당)&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;0.6&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;△&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;문 열림 상태로 간접 추론&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;ACC1&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;2.1&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;O&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt; &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;ACC2&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;7.5&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;12&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;O&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt; &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;송풍기 1단&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;X&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt; &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;송풍기 2단&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;4.2&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;X&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt; &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;송풍기 3단&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;6.8&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;X&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt; &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;송풍기 4단&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;11.2&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;X&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt; &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;라이트 1단&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;0.8&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;△&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;단계는 나오지 않음&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;라이트 2단&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;8.8&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;△&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;단계는 나오지 않음, 차종별로 ACC2부터 가능함&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;라이트 3단(High)&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;9.8&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;△&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;단계는 나오지 않음, 차종별로 ACC2부터 가능함&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;비상등&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;5.5&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;X&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt; &lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;그리고 구현 가능한 시나리오는 다음과 같았습니다.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;일반적인 시나리오
+
+S1. 시동 OFF + 문 열림: 0.6A 소모
+S2. ACC1 단독: 2.1A 소모
+S3. ACC2 단독: 7.5A 소모
+S4. ACC1 + Light 1단 (흔한 유형): 2.9A 소모
+S5. ACC2 + Light 2단 (흔한 유형): 16.3A 소모
+S6. ACC2 + 송풍기 2단 (흔히 말하는 차박): 11.7A 소모
+
+최악의 시나리오
+
+SW. ACC2 + 실내등 2개 (문 앞뒤 열림) + 송풍기 4단계 + Light 3단 + 비상등 +핸드폰 충전기: 32.7A 소모
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;이제 이렇게 세워둔 시나리오 별로 각 차량별 정격 용량의 절반에 도달하기까지 걸리는 시간까지의 시간을 측정했습니다.&lt;/p&gt;
+
+&lt;p&gt;예를 들어, 아래는 60Ah 배터리를 사용하는 차량의 경우입니다. 각 S1 - S6는 시나리오를 뜻하며, 값은 시간(hour)입니다.&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;SW&lt;/th&gt;
+      &lt;th&gt;S1&lt;/th&gt;
+      &lt;th&gt;S2&lt;/th&gt;
+      &lt;th&gt;S3&lt;/th&gt;
+      &lt;th&gt;S4&lt;/th&gt;
+      &lt;th&gt;S5&lt;/th&gt;
+      &lt;th&gt;S6&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;0.5&lt;/td&gt;
+      &lt;td&gt;27.0&lt;/td&gt;
+      &lt;td&gt;7.7&lt;/td&gt;
+      &lt;td&gt;2.2&lt;/td&gt;
+      &lt;td&gt;5.6&lt;/td&gt;
+      &lt;td&gt;1.0&lt;/td&gt;
+      &lt;td&gt;1.4&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;이렇게 모든 차종에 대해 시나리오에 따른 전류 소모 측정 실험을 마친 후, 전체 차량의 상태 조회의 적당한 주기를 &lt;strong&gt;10분&lt;/strong&gt;으로 결정지었습니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;차량이-방전될-상태인지-판단하기&quot;&gt;차량이 방전될 상태인지 판단하기&lt;/h2&gt;
+
+&lt;p&gt;위에서 정의한 시나리오는 전류 소모 측정을 위해 어느 정도 미리 생각해두어 생각한 틀일 뿐, 실제로 쏘카 데이터를 기반으로 만들어진 시나리오는 아닙니다. 이제 수집된 데이터로부터 실제로 방전이 될만한 상황인지를 판단해야 합니다. 저희는 쏘카 내 데이터로부터 이런 시나리오를 분석하여 정의하기로 했습니다.&lt;/p&gt;
+
+&lt;p&gt;앞서 쏘카 차량에는 관제 단말기가 부착되어 있고, 이 단말기로부터 차량 주행과 관련된 데이터를 주기적으로 수집하고 있다고 말씀 드렸습니다. 수집하는 데이터 중에는 시동/가시동/정지 여부, 전조등 켜짐/꺼짐 여부, 전압 정보 등등 고객님의 차량 운용 패턴과 관련된 데이터가 모두 담겨있습니다. 따라서 &lt;strong&gt;과거의 방전 관련 CS 콜이 들어온 시간을 전/후로 주행 데이터를 살펴보면 문제 발생을 일으키는 주요한 운용 패턴을 발견할 수 있습니다.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;예를 들면, 여름철에 가장 많이 들어온 방전 관련 CS 콜을 살펴보면 위의 시나리오 중 S6이 가장 많습니다. 주행은 하고 있지만 엔진이 작동하기에 추가적인 기름 소모는 아쉽고, 차에서 좀 쉬고 싶기는 해서 송풍기에서 나오는 바람을 좀 쐬고 있다 보니 발생하는 일입니다. 그 외에도 희귀하지만 인상 깊었던 상황을 공유드리자면, 자주 방전이 일어나 발전기까지 체크했는데도 방전 문제가 개선되지 않았던 차량에 대한 신고를 받고 데이터를 살펴보니, 퓨즈단의 배선이 잘못되어 시동이 꺼진 후에도 암전류가 지속적으로 일어났던 상황이었습니다. 다음의 그림은 각각 “블루투스 계측기를 이용한 전류 측정 사진”과 “같은 잔존 수명을 가진 배터리가 암전류의 유무에 따라 시간당 전압 변화율이 어떻게 달라지는지 보여주는 예시 차트”입니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/socar-mobility-lab-battery-management-process-second-stage/Figure-2.jpg&quot; alt=&quot;&quot; width=&quot;90%&quot; height=&quot;90%&quot; style=&quot;display: block; margin: 0 auto&quot; /&gt;
+&lt;em&gt;블루투스 계측기를 이용한 전류 측정&lt;/em&gt;
+&lt;img src=&quot;/img/socar-mobility-lab-battery-management-process-second-stage/Figure-3.png&quot; alt=&quot;&quot; width=&quot;90%&quot; height=&quot;90%&quot; style=&quot;display: block; margin: 0 auto&quot; /&gt;
+&lt;em&gt;같은 잔존 수명을 가진 배터리가 암전류의 유무에 따라 시간당 전압 변화율이 어떻게 달라지는지 보여주는 예시&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;실험과 데이터를 보기 전에는 고객께서 단순히 전조등만 켜 놓았거나, 송풍기만 켜 놓았다거나, 실내등만 켜두는 등의 단일 조작 위주의 시나리오가 많을 거라 생각했습니다. 그러나 실험과 데이터를 통해, 생각과는 달리 꽤나 다양한 요소가 결합된 시나리오가 많다는 사실을 알 수 있었습니다.&lt;/p&gt;
+
+&lt;p&gt;결과적으로 저희는 수집된 데이터가 다음과 같은 조건일 때 방전 알림을 보내야 하는 상황이라고 판단했습니다.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;시동 종료 후 가시동(ACC) 10분 이상 지속 할 때&lt;/li&gt;
+  &lt;li&gt;시동 종료 후 10분간 문 잠금/열림 연속 10회 이상 시도할 때&lt;/li&gt;
+  &lt;li&gt;전조등이 켜져 있을 때&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;데이터 수집은 위에서 정한 대로 10분마다 이루어지며 1~3은 모두 OR 조건으로 엮입니다. 따라서 어느 한 조건이라도 충족이 되면 그 차량은 알림의 대상이 됩니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/socar-mobility-lab-battery-management-process-second-stage/Figure-4.png&quot; alt=&quot;&quot; width=&quot;90%&quot; height=&quot;90%&quot; style=&quot;display: block; margin: 0 auto&quot; /&gt;
+&lt;em&gt;실행 프로세서의 순서도. 실제 시스템 구축은 모비딕 팀 스팍께서 해주셨습니다.&lt;/em&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;그래서-알림은-어떻게-보내지나요&quot;&gt;그래서 알림은 어떻게 보내지나요?&lt;/h2&gt;
+
+&lt;p&gt;위 과정에 의해 DB에 알림 대상이 되는 차량들이 저장되며, 이후에는 쏘카의 서비스 서버가 이 DB를 조회해 알림을 보냅니다.&lt;br /&gt;
+서비스 서버에서는 대상 차량 확인 후 다음을 고려하여 알람 주기 및 방식을 정합니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;알림 주기
+    &lt;ul&gt;
+      &lt;li&gt;고객께서 차량 정차 후 정차된 차량으로 돌아오기 어려울 정도로 멀리 떠나기까지 걸리는 시간을 고려해야 합니다.&lt;/li&gt;
+      &lt;li&gt;차량을 정차(강제 반납의 가능성이 높음) 후 고객께서 다른 교통수단으로 갈아타서 이동을 시작하거나, 개인 사정으로 어떠한 연락에도 즉시 확인 및 응답이 불가능하다면 그 고객에게는 어떠한 알림도 무의미합니다.&lt;/li&gt;
+      &lt;li&gt;따라서 고객의 다음 행동이 구체화되어 차량으로 다시 돌아오기엔 어려워지는 상황이 오기 전에 미리 연락을 취해야 합니다.&lt;/li&gt;
+      &lt;li&gt;이 시간은 과거 CS 콜 분석을 통해 &lt;strong&gt;10분&lt;/strong&gt;으로 결정하였습니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;알림 방식 소모 비용
+    &lt;ul&gt;
+      &lt;li&gt;기존에 쏘카에서 사용하고 있으며 고객에게 친숙한 채널을 최대한 활용하기로 했습니다.&lt;/li&gt;
+      &lt;li&gt;비용적으로도 저렴한 &lt;strong&gt;카카오톡 알림&lt;/strong&gt;을 활용하기로 결정했습니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;전체 과정을 최종적으로 정리해 보면 다음과 같습니다.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;전체 차량에 대한 상태 데이터를 10분마다 수집합니다.&lt;/li&gt;
+  &lt;li&gt;미리 세워둔 시나리오를 기반으로 현재 차량이 방전이 될만한 상태인지 판단합니다.&lt;/li&gt;
+  &lt;li&gt;방전이 될만한 차량을 발견하면, 해당 차량과 고객에 대한 데이터를 DB에 적재합니다.&lt;/li&gt;
+  &lt;li&gt;쏘카 서비스 서버는 DB에서 알림을 보낼 차량과 고객을 확인합니다.&lt;/li&gt;
+  &lt;li&gt;해당 고객의 카카오톡으로 10분마다 방전 주의 알림을 보냅니다.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;조금만-더-세심하게-다뤄주세요-다-같이-쓰는-차니까요&quot;&gt;조금만 더 세심하게 다뤄주세요. 다 같이 쓰는 차니까요.&lt;/h2&gt;
+
+&lt;p&gt;위의 기준으로 쏘카는 본 서비스를 2021년 2월부터 투입했습니다. 성과를 간략히 말씀드리면, &lt;strong&gt;동기 대비 이용건수가 8% 늘어난 상황에서 (2021년 n월 기준) 긴급 출동 건수 35% 감소가 이루어졌으며 방전 비율도 절반 정도 감소 (2021년  n월 기준)&lt;/strong&gt; 했음을 확인했습니다 (회사의 영업 기밀이기에 자세한 기준을 공개하기 어려운 점 양해 부탁드립니다.).&lt;/p&gt;
+
+&lt;p&gt;본 아이디어의 기본 개념은 “고객께서 실수할 확률 자체를 낮추어드리자”입니다. 누구도 쏘카의 차량을 일부러 고장 내고 싶지 않으리라 생각합니다. 단지 자동차에 대한 경험적 이해가 아직 부족해서 혹은 피할 수 없는 상황에 놓여서, 어쩌면 쏘카 정비의 미진한 점으로 인한 일들이 있었겠죠. 이런 상황에 놓이지 않도록 미리 도움을 드리는 일도 쏘카가 기술적으로 해결할 일이라고 생각합니다.&lt;/p&gt;
+
+&lt;p&gt;쏘카는 &lt;strong&gt;누구나&lt;/strong&gt; 이용할 수 있고, &lt;strong&gt;누구나&lt;/strong&gt; 이용하는 ‘&lt;strong&gt;카-셰어링&lt;/strong&gt;’ 서비스입니다. 따라서 &lt;strong&gt;쏘카 차량의 주인은 “쏘카”가 아닌 “여러분 모두”라고 생각합니다.&lt;/strong&gt; 쏘카는 단지 모두가 사용하는 차량에 날개를 달아주는 도우미라고 생각합니다. 앞으로도 좋은 날개를 달기 위해 고객의 주행 환경과 경험 개선을 위한 다양한 기술 기반 아이템을 많이 발굴하도록 노력하겠습니다. 쏘카를 이용해 주시는 쏘카 차량의 주인이신 여러분들께서도 여러분들의 차량을 조금만 더 아껴주시면 감사하겠습니다.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;strong&gt;쏘카의 모빌리티 Lab&lt;/strong&gt;은 모두 높은 수준의 기계 공학 지식을 보유한 인력으로 이루어졌으며, 쏘카의 풍부한 차량 데이터에 기계 공학 지식을 녹여 운영에 필요한 최적 솔루션을 만들고 있습니다. (우리에게 힘을 더해주실 우수한 분을 모시고 있습니다. 언제든지 지원해 주세요)&lt;/p&gt;
+&lt;/blockquote&gt;</content><author><name>charlie</name></author><category term="mobility" /><category term="mechanical engineering" /><category term="chemical engineering" /><category term="data" /><summary type="html">안녕하세요. 쏘카 모빌리티 Lab의 찰리입니다. 지난 글에서는 10,000대가 넘는 차량을 운영하는 쏘카에서, 차량의 배터리 상태 관리를 위한 공학적인 접근 방식과 해결 방법에 대해 다뤘습니다. 이번 글에서는 배터리 방전을 사전에 막기 위해 알람 서비스를 도입하고, 운영에 도입한 내용을 공유해 보고자 합니다. 다소 전문적인 지식이 필요했던 지난번 글에 비해 이번 글은 누구나 쉽게 읽으실 수 있을 거라 생각합니다.</summary></entry><entry><title type="html">차량용 단말을 위한 IoT 파이프라인 구축기 #1</title><link href="https://tech.socarcorp.kr/mobility/2022/01/06/socar-iot-pipeline-1.html" rel="alternate" type="text/html" title="차량용 단말을 위한 IoT 파이프라인 구축기 #1" /><published>2022-01-06T00:00:00+00:00</published><updated>2022-01-06T00:00:00+00:00</updated><id>https://tech.socarcorp.kr/mobility/2022/01/06/socar-iot-pipeline-1</id><content type="html" xml:base="https://tech.socarcorp.kr/mobility/2022/01/06/socar-iot-pipeline-1.html">&lt;div class=&quot;photo-copyright&quot;&gt;
+Photo by &lt;a href=&quot;https://unsplash.com/@mbenna?utm_source=unsplash&amp;amp;utm_medium=referral&amp;amp;utm_content=creditCopyText&quot;&gt;Mike Benna&lt;/a&gt; on &lt;a href=&quot;https://unsplash.com/s/photos/pipeline?utm_source=unsplash&amp;amp;utm_medium=referral&amp;amp;utm_content=creditCopyText&quot;&gt;Unsplash&lt;/a&gt;
+&lt;/div&gt;
+
+&lt;h2 id=&quot;떼려야-뗄-수-없는-관계-단말과-서비스&quot;&gt;떼려야 뗄 수 없는 관계, 단말과 서비스&lt;/h2&gt;
+
+&lt;p&gt;안녕하세요. 모빌리티 플랫폼 그룹 - 모비딕 팀의 스팍입니다.&lt;/p&gt;
+
+&lt;p&gt;쏘카가 서비스를 제공하기 위해서는 &lt;strong&gt;차량의 상태 정보&lt;/strong&gt;가 필수적입니다. 사용이 끝난 차량이 정상적으로 제 위치에 안전한 상태로 돌아왔는지 언제든지 확인할 수 있어야 합니다.&lt;/p&gt;
+
+&lt;p&gt;따라서 차량의 상태 정보를 수집하여 서버에 전달하며, 고객의 요청에 따라 차량을 제어해주는 장치가 필요합니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/iot-pipeline-1/pipeline_concept.jpg&quot; alt=&quot;&quot; width=&quot;75%&quot; height=&quot;75%&quot; style=&quot;display: block; margin: 0 auto&quot; /&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;잠깐-쏘카의-구형-단말을-돌아봅시다&quot;&gt;잠깐 쏘카의 구형 단말을 돌아봅시다&lt;/h2&gt;
+
+&lt;p&gt;서비스 초기부터 쏘카는 차량 내에 서비스를 위한 단말을 장착하여 사용하고 있었습니다(편의상 구형 단말이라 부르겠습니다). 그리고 서비스가 급격하게 성장하던 시절에도 이 단말은 그럭저럭 제 역할을 해주었죠.&lt;/p&gt;
+
+&lt;p&gt;이 구형 단말이 개발될 당시에는 운영 편의성을 위한 적합한 기술들이 아직 등장하기 전이었습니다. 따라서 단말을 제어할 때는 단말을 식별할 수 있는 고유번호인 전화번호를 이용하여 SMS 메시지를 통해 제어하였고, 단말이 데이터를 보낼 때는 웹서버에 데이터를 보내듯 HTTP로 데이터를 전달하였습니다.&lt;/p&gt;
+
+&lt;p&gt;이러한 구형 단말은 잠재적인 문제를 갖고 있었습니다. 그중 몇 가지를 꼽아보자면 다음과 같습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;SMS의 특성상 단말에 명령이 도달하는 데 시간이 많이 소요됩니다. 게다가 이 시간은 모든 지역에서 동일하지 않고 서울에서 멀어질수록 오래 걸리는 경향이 있습니다.&lt;/li&gt;
+  &lt;li&gt;데이터 수집을 HTTP로 하다 보니 이를 위한 웹서버가 필요합니다.&lt;/li&gt;
+  &lt;li&gt;데이터 전달 요청이 급증하면서 서버에 부하가 걸리면 데이터 수집에 지연이 발생합니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/iot-pipeline-1/old_device_arch.jpg&quot; alt=&quot;&quot; width=&quot;75%&quot; height=&quot;75%&quot; style=&quot;display: block; margin: 0 auto&quot; /&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;이렇게-된-이상-새로운-단말을-만든다&quot;&gt;이렇게 된 이상 새로운 단말을 만든다!&lt;/h2&gt;
+
+&lt;p&gt;이러한 문제를 해결하기 위해 새로운 단말을 만들기로 하였습니다.&lt;/p&gt;
+
+&lt;p&gt;새로운 단말을 만들 때 기존 단말이 갖고 있던 한계점과 문제를 보완하기 위해 아래와 같은 요구사항들을 세웠습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;HTTP를 통한 단말 데이터 수집을 더는 않는다. -&amp;gt; 단말 메시지보다 HTTP 프로토콜이 더 많은 네트워크 자원을 소모해야 할 이유가 없음.&lt;/li&gt;
+  &lt;li&gt;SMS를 통한 차량 제어를 더는 하지 않는다. -&amp;gt; 메시지 도달 시간이 환경에 따라 다르고 발송할 때마다 비용이 발생하는 방식에서 탈피.&lt;/li&gt;
+  &lt;li&gt;데이터 전달이 급증할 때 유연하게 대응할 수 있어야 함 -&amp;gt; 트래픽에 유동적으로 대응이 힘든 웹서버를 사용해서는 안 됨.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;해서, 위와 같은 요구사항에 맞춰 신규 단말은 &lt;a href=&quot;https://ko.wikipedia.org/wiki/MQTT&quot;&gt;MQTT&lt;/a&gt; 프로토콜 기반의 통신 방식을 채택하였습니다.&lt;/p&gt;
+
+&lt;p&gt;MQTT를 단말 프로토콜로 선정한 이유는, 무엇보다 프로토콜 자체가 제한적인 IoT 기기에서 대용량의 데이터를 전송하기 위한 프로토콜로써 설계가 되었다는 점입니다.&lt;/p&gt;
+
+&lt;p&gt;그리고 Publisher/Subscriber 구조로 되어 있어 여러 단말에 메시지를 퍼트리거나 상태 정보를 수집하는 것도 직접 각각의 단말들에 P2P로 연결할 필요 없이 메시지 브로커의 중개를 따르면 되므로 네트워크 관리 측면에도 용이합니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/iot-pipeline-1/MQTT_protocol_example_without_QoS.png&quot; alt=&quot;출처:ko.wikipedia.org/wiki/MQTT&quot; width=&quot;45%&quot; height=&quot;45%&quot; style=&quot;display: block; margin: 0 auto&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;마지막으로 MQTT는 국제 표준화된 (ISO 표준 ISO/IEC PRF 20922) 프로토콜이므로 별도로 메시지 브로커를 개발할 필요 없이 이미 존재하는 수많은 메시지 브로커 중 하나를 선택하여 사용하면 된다는 것도 장점입니다.&lt;/p&gt;
+
+&lt;p&gt;MQTT를 지원하는 메시지 브로커는&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://mosquitto.org/&quot;&gt;mosquitto&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://vernemq.com/&quot;&gt;VernaMQ&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.hivemq.com/&quot;&gt;HiveMQ&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.rabbitmq.com/&quot;&gt;RabbitMQ&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;정도가 있습니다.&lt;/p&gt;
+
+&lt;p&gt;하지만, 위에 나열된 MQTT 브로커들을 직접 운영한다고 하면 아래와 같은 고민에 부딪히게 됩니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;메시지 브로커들을 직접 관리해야 하므로 운영에 대한 부담이 늘어납니다.&lt;/li&gt;
+  &lt;li&gt;대부분의 브로커가 스스로에 대한 모니터링 방법은 제공하지만 어떤 단말이 연결 중인지에 대한 정보까지는 제공해주지 않습니다.&lt;/li&gt;
+  &lt;li&gt;서비스 안정성을 위해서 클러스터링 할 수 있어야 하지만 이것을 지원해주지 않는 브로커도 많습니다.&lt;/li&gt;
+  &lt;li&gt;차량 제어라는 특수성을 만족하기에는 보안 측면에서 부족한 부분이 있습니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;그리하여 저희 팀에서는 직접 브로커를 관리 및 운영하기보다는, 클라우드 관리형 메시지 브로커 서비스인 &lt;a href=&quot;https://aws.amazon.com/ko/iot-core/&quot;&gt;AWS IoT Core&lt;/a&gt;를 사용하기로 하였습니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;새-술은-새-부대에-aws-iot-core&quot;&gt;새 술은 새 부대에. AWS IoT Core.&lt;/h2&gt;
+
+&lt;p&gt;AWS IoT Core를 쓰면 여러 이점을 얻을 수 있습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;관리되는 서비스이므로 운영에 있어 수기로 작업해줘야 하는 부분이 줄어듭니다.&lt;/li&gt;
+  &lt;li&gt;IoT 단말들을 정책기반으로 운영할 수 있습니다.&lt;/li&gt;
+  &lt;li&gt;어떤 단말들이 연결되었는지 확인이 가능합니다.&lt;/li&gt;
+  &lt;li&gt;메시지 브로커에 대한 모니터링 역시 손쉽게 가능합니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/iot-pipeline-1/new_device_arch.jpg&quot; alt=&quot;&quot; width=&quot;75%&quot; height=&quot;75%&quot; style=&quot;display: block; margin: 0 auto&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;AWS IoT Core를 쓸 때 서비스를 운영하는 입장에서 가장 주요한 부분은 “관리되는 서비스”라는 점입니다. 카셰어링 서비스의 특성상 시간이나 시즌마다 데이터양이 크게 달라지는 이슈를 가지고 있습니다. 그리고 서비스에 부하가 걸리더라도 항상 단말은 명령 수신과 상태 보고에 있어 준비된 상태를 유지해야 합니다. 단말이나 통신 환경에 문제가 없을지라도 브로커의 상태가 불안정하면 서비스의 운영 안정성에 크게 영향을 미치므로 관리되는 서비스가 주는 이점은 강력하다 하겠습니다.&lt;/p&gt;
+
+&lt;p&gt;특히나 AWS IoT Core를 사용하면서 강력한 도구가 되어주는 것이 &lt;a href=&quot;https://docs.aws.amazon.com/ko_kr/iot/latest/developerguide/provision-wo-cert.html&quot;&gt;Fleet provisioning&lt;/a&gt;이라는 것입니다. 메시지 브로커에 인증받지 않은 단말이나 시스템이 접속하여 멋대로 메시지를 구독 혹은 발행하게 되면 보안 측면에서 데이터 유출이 일어나거나 차량 제어 측면에서 적절치 못한 제어를 통해 고객의 안전이 위협받을 수도 있습니다.&lt;/p&gt;
+
+&lt;p&gt;따라서 메시지 브로커에 대한 접근 제한이 필수라 하겠는데, 수천 대가 넘어가는 단말들에 대해 일일히 접근 권한을 부여하고 관리하는 것도 큰일입니다. 이를 Fleet provisioning 기능을 통해 인증서와 보안정책 간의 결합을 통해 매우 편리하게 관리할 수 있게 되었습니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;aws-iot-core-쓰면-끝&quot;&gt;AWS IoT Core 쓰면 끝?&lt;/h2&gt;
+
+&lt;p&gt;AWS IoT Core를 활용하여 단순히 차량 데이터를 수집을 하는 것에만 머무르기엔 아쉽습니다. 여기서 더 나아가 각 부서(도메인)의 관점과 필요에 따라 수집된 데이터를 유연하게 활용한다면 더 좋을 것입니다. 기존에는 단말 데이터를 전부 DB에 저장하여 활용하는 방식을 사용했습니다. 그러나 이 방식은 DB 부하를 불러온다는 단점을 가지고 있습니다.&lt;/p&gt;
+
+&lt;p&gt;모비딕 팀에서는 이 단점을 극복하기 위해 AWS IoT Core로부터 수집한 데이터를 &lt;a href=&quot;https://aws.amazon.com/ko/msk/&quot;&gt;Amazon MSK&lt;/a&gt;를 활용하여 흘려보내고 있습니다. 이러한 구조로 인해 데이터가 필요한 각 비즈니스 영역에서 MSK를 구독하는 컨슈머를 만들기만 하면 수집된 차량 상태 데이터를 활용할 수 있게 됩니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/iot-pipeline-1/aws_iot_arch.jpg&quot; alt=&quot;&quot; width=&quot;75%&quot; height=&quot;75%&quot; style=&quot;display: block; margin: 0 auto&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;여기까지 쏘카에서 사용 중인 단말들을 더 빠르게 제어하고 더 많은 데이터를 더 안정적으로 수집하기 위한 구조를 만들어 내는 과정을 설명해 드렸습니다.&lt;/p&gt;
+
+&lt;p&gt;다음에는 실제 Amazon MSK를 구축할 때 마주쳤던 문제들을 해결하는 과정에서 얻어진 글로 찾아뵙겠습니다.&lt;/p&gt;</content><author><name>spock</name></author><category term="mobility" /><category term="iot" /><summary type="html">Photo by Mike Benna on Unsplash</summary></entry><entry><title type="html">쏘카 신입 데이터 엔지니어 디니의 4개월 회고</title><link href="https://tech.socarcorp.kr/data/2021/12/28/data-engineering-team-onboarding.html" rel="alternate" type="text/html" title="쏘카 신입 데이터 엔지니어 디니의 4개월 회고" /><published>2021-12-28T08:00:00+00:00</published><updated>2021-12-28T08:00:00+00:00</updated><id>https://tech.socarcorp.kr/data/2021/12/28/data-engineering-team-onboarding</id><content type="html" xml:base="https://tech.socarcorp.kr/data/2021/12/28/data-engineering-team-onboarding.html">&lt;p&gt;안녕하세요! 쏘카 데이터 엔지니어링 팀의 디니입니다.&lt;/p&gt;
+
+&lt;p&gt;저는 2021년 8월에 쏘카 데이터 엔지니어링 팀에 신입 데이터 엔지니어로 입사했습니다. 지난 4개월간 데이터 엔지니어링 팀에서 경험하며 느낀 점을 공유하려 합니다. 그 중 데이터 엔지니어링 팀의 온보딩과 실무를 겪으며 느낀 내용을 주로 다루었습니다. 혹시 데이터 분석가나 데이터 사이언티스트의 내용이 궁금하신 분은 &lt;a href=&quot;https://tech.socarcorp.kr/data/2020/08/19/socar-data-group-intern-review.html&quot; target=&quot;_blank&quot;&gt;쏘카 데이터 그룹 - 데이터 사이언티스트 인턴 9개월 후기&lt;/a&gt;를 보시면 도움이 될 것 같습니다.&lt;/p&gt;
+
+&lt;p&gt;다음과 같은 분들이 읽으시면 도움이 될 것 같습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;쏘카 데이터 엔지니어링 팀의 신입 채용 과정이 궁금하신 분&lt;/li&gt;
+  &lt;li&gt;쏘카 데이터 엔지니어링 팀에 입사한 인원이 빠르게 회사에 적응하기 위한 온보딩 과정이 궁금하신 분&lt;/li&gt;
+  &lt;li&gt;온보딩 프로세스를 만들려고 하시는 분&lt;/li&gt;
+  &lt;li&gt;쏘카 데이터 엔지니어링 팀이 어떻게 일을 하는지 관심 있으신 분&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;목차&quot;&gt;목차&lt;/h2&gt;
+
+&lt;p&gt;목차는 다음과 같습니다. 각 제목을 클릭하시면 해당 부분으로 이동하실 수 있습니다.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;&lt;a href=&quot;#join-process-and-background&quot;&gt;입사 지원 배경과 과정&lt;/a&gt;
+    &lt;ul&gt;
+      &lt;li&gt;지원 배경&lt;/li&gt;
+      &lt;li&gt;입사 과정&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#onboarding-process&quot;&gt;입사 후 온보딩 과정&lt;/a&gt;
+    &lt;ul&gt;
+      &lt;li&gt;온보딩 과제&lt;/li&gt;
+      &lt;li&gt;과제 후 얻은 것&lt;/li&gt;
+      &lt;li&gt;마무리 발표&lt;/li&gt;
+      &lt;li&gt;그 외 온보딩 &amp;amp; 밍글링 과정&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#after-onboarding&quot;&gt;온보딩 후 실무 투입 과정&lt;/a&gt;
+    &lt;ul&gt;
+      &lt;li&gt;첫 프로젝트 : 메타데이터 플랫폼 구축&lt;/li&gt;
+      &lt;li&gt;각종 파티 참여&lt;/li&gt;
+      &lt;li&gt;온보딩 과정이 어떻게 도움되었나요?&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#throwback&quot;&gt;앞으로는 무엇을?&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#qna&quot;&gt;Q &amp;amp; A&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;1-입사-지원-배경과-과정-&quot;&gt;1. 입사 지원 배경과 과정 &lt;a name=&quot;join-process-and-background&quot;&gt;&lt;/a&gt;&lt;/h2&gt;
+
+&lt;p&gt;먼저 제가 회사를 지원하게 된 배경과 그 과정을 말씀드립니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;지원-배경&quot;&gt;지원 배경&lt;/h3&gt;
+
+&lt;p&gt;저는 대학에서 경영학을 전공했고, 처음에는 데이터 분석에 관심이 있었습니다. 그런데 우연한 계기로 실시간 API의 데이터를 가공하여 데이터베이스에 적재하고 지표를 만드는 경험을 한 뒤, 데이터 엔지니어링의 매력을 느끼게 되었습니다.&lt;/p&gt;
+
+&lt;p&gt;데이터 분석과 실험을 잘 하려면 원천(Raw) 데이터와 데이터 인프라 환경이 잘 만들어져야 하고, 이런 환경을 구축하는 것이 데이터 엔지니어링이라고 생각했습니다. 인프라, Database, 개발 등 다양한 경험을 할 수 있는 데이터 엔지니어가 멋있어(!) 보였고, 그렇게 저는 쏘카 데이터 엔지니어 포지션에 지원하게 되었습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;입사-과정&quot;&gt;입사 과정&lt;/h3&gt;
+
+&lt;p&gt;쏘카 데이터 엔지니어링의 채용 프로세스는 다음처럼 진행되었습니다.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;서류 제출&lt;/li&gt;
+  &lt;li&gt;전화 면접&lt;/li&gt;
+  &lt;li&gt;1차 면접(기술 면접)&lt;/li&gt;
+  &lt;li&gt;2차 면접(임원 면접)&lt;/li&gt;
+  &lt;li&gt;처우 협의&lt;/li&gt;
+  &lt;li&gt;최종 합격&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h4 id=&quot;1-서류-제출&quot;&gt;1. 서류 제출&lt;/h4&gt;
+
+&lt;p&gt;원티드를 통해 서류를 제출했습니다. 따로 자기소개서 양식은 없었고, 과거 프로젝트 경험이 담긴 이력서와 함께 &lt;a href=&quot;https://diana-lab.tistory.com/&quot; target=&quot;_blank&quot;&gt;개인 블로그&lt;/a&gt;와 &lt;a href=&quot;https://github.com/yoonhyejin&quot; target=&quot;_blank&quot;&gt;Github&lt;/a&gt;를 첨부했습니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;2-전화-면접&quot;&gt;2. 전화 면접&lt;/h4&gt;
+
+&lt;p&gt;이력서에 있는 경험들과 데이터 엔지니어링에 대해 얼마나 알고 있는지를 중심으로 면접이 진행되었습니다. 업무 관련 문제 해결 경험, 관련 프레임워크를 써보거나 공부한 경험, DB 관련 개념은 알고 있는지 등의 질문이 있었습니다. 데이터 엔지니어링 팀장이신 토마스가 면접을 해주셨고 30분 정도 진행되었습니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;3-1차-면접-기술-면접&quot;&gt;3. 1차 면접 (기술 면접)&lt;/h4&gt;
+
+&lt;p&gt;1차 기술 면접엔 포트폴리오 위주로 직무 관련 꼬리 질문이 이어졌습니다. 그 뒤에 코딩테스트가 있었는데, 총 3문제를 한 시간에 걸쳐 풀었습니다. 면접자에게 시간을 주고 풀게 한 뒤, 코드를 보면서 질문과 답변을 주고받는 형식이었습니다. 멀티 스레드, 클래스 등의 개념과 파이썬을 통한 로직 구현, SQL 쿼리의 여러 기능과 활용법을 알아야 하는 질문이 나왔습니다.&lt;/p&gt;
+
+&lt;p&gt;이론적인 알고리즘 문제보다 현업에서 마주칠만한 문제 상황을 어떻게 코드로 해결할지를 묻는 질문이었습니다. 쏘카가 모빌리티 기업인 만큼, 모빌리티 관련 도메인 지식도 있으면 좋다 생각했습니다. &lt;strong&gt;정답 여부가 아닌 전체적으로 문제에 접근하는 논리를 보시는 것 같았습니다.&lt;/strong&gt; 개인적으로 모든 채용 과정 중 가장 긴장을 많이 한 과정이었습니다. 1시간 30분 정도 진행되었습니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;4-2차-면접-임원-면접&quot;&gt;4. 2차 면접 (임원 면접)&lt;/h4&gt;
+
+&lt;p&gt;데이터 그룹의 그룹장이신 DK가 면접을 진행했습니다. 대부분 이력서 기반의 인성 질문들이었으나 기술 질문도 있었습니다. 회사에 대해 질문하는 Reverse Interview 과정도 20분 정도 있었습니다. 기술 면접에서 너무 긴장했던 탓인지 2차 면접은 상대적으로 순한맛(?)으로 느껴졌습니다.  1시간 정도 진행되었습니다.&lt;/p&gt;
+
+&lt;p&gt;모든 과정의 결과 발표는 1주일 이내로 신속하게 진행되었고, 전화와 이메일을 통해 명확한 의사소통이 이루어졌습니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;2-입사-후-온보딩-과정-&quot;&gt;2. 입사 후 온보딩 과정 &lt;a name=&quot;onboarding-process&quot;&gt;&lt;/a&gt;&lt;/h2&gt;
+
+&lt;p&gt;약 한 달 정도의 채용 프로세스 끝에 드디어 쏘카 데이터 엔지니어링 팀에 입사하게 되었습니다.&lt;/p&gt;
+
+&lt;p&gt;쏘카 데이터 엔지니어링 팀은 총 8명으로 쏘카 데이터 엔지니어링 팀이 하는 일은 데이터 엔지니어링 팀의 하디가 작성한 &lt;a href=&quot;https://tech.socarcorp.kr/data/2021/03/24/what-socar-data-engineering-team-does.html&quot; target=&quot;_blank&quot;&gt;데이터 엔지니어링 팀이 하는 일&lt;/a&gt;과 &lt;a href=&quot;https://www.notion.so/socarcorp/d458b6b77a2243fb873d1ac800c321f7?p=1e895c6f8d6c49d0962d9c3af3e37f81&quot; target=&quot;_blank&quot;&gt;쏘카 데이터 엔지니어 채용공고&lt;/a&gt;에 잘 설명되어 있습니다.&lt;/p&gt;
+
+&lt;p&gt;며칠 뒤, 2주 동안 4개의 온보딩 과제를 진행하게 되었습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;온보딩-과제&quot;&gt;온보딩 과제&lt;/h3&gt;
+
+&lt;p&gt;이 온보딩 과제는 데이터 엔지니어링 팀에 가장 최근에 입사했던 그랩의 아이디어에서 출발했다고 합니다. 간단한 과제들을 통해 팀에서 다루는 도구와 업무 플로우에 익숙해지는 것이 목표였습니다. 과제를 통해 Kubernetes, Docker, Airflow, FastAPI, Git, Helm Chart와 같은 기술을 경험해볼 수 있었습니다. 구체적으로 과제 내용은 다음과 같았습니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;1-docker---docker-다루기&quot;&gt;1) Docker - Docker 다루기&lt;/h4&gt;
+
+&lt;p&gt;첫 과제는 간단한 Docker 파일을 만들어 실행하고, Docker Compose로 Airflow를 띄워보는 내용이었습니다.&lt;/p&gt;
+
+&lt;p&gt;데이터 엔지니어링 팀은 기본적으로 Kubernetes 환경에서 업무가 진행되기 때문에 Docker 부터 익혀야 한다는 생각으로 만들어진 과제입니다. 맨 처음에는 Docker를 설치하고, Ubuntu 컨테이너를 가져와서 실행하고 접속하여 파일을 만들어보는 등의 과정을 진행했습니다. 그다음에는 Ubuntu 이미지를 기반으로 hello world를 CMD를 이용해 출력하는 파일을 만들었습니다.&lt;/p&gt;
+
+&lt;p&gt;이 뒤에는 Docker Compose를 이용해 Airflow를 띄우고 Web UI에 접속하는 것까지 진행했습니다. 이 과정에서 Airflow의 기본 구조도 공부할 수 있었습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-onboarding/onboarding-comment.png&quot; alt=&quot;온보딩 과제 - 험프리 코멘트&quot; /&gt;
+&lt;em&gt;Docker 과제 기록 - 천사 험프리의 코멘트&lt;/em&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;2-docker-compose--airflow---간단한-web-server-개발하기&quot;&gt;2) Docker Compose &amp;amp; Airflow - 간단한 Web Server 개발하기&lt;/h4&gt;
+
+&lt;p&gt;여기서는 앞에서 배운 Docker Compose를 활용해 웹서버와 DB를 띄우고, 마찬가지로 Docker Compose로 Airflow를 띄운 뒤 웹서버와 통신하는 DAG을 작성하는 과제가 주어졌습니다.&lt;/p&gt;
+
+&lt;p&gt;웹 프레임워크는 딱히 제한이 없어, 그나마 익숙했던 Flask로 간단한 웹서버를 만들었습니다. 그다음에 이 웹서버를 띄울 수 있는 Docker 파일을 만들어야 했습니다. 이 과정에서 &lt;code class=&quot;highlighter-rouge&quot;&gt;ENTRYPOINT&lt;/code&gt; 와 &lt;code class=&quot;highlighter-rouge&quot;&gt;CMD&lt;/code&gt;의 사용법을 익히느라 헤맨 기억이 있습니다.&lt;/p&gt;
+
+&lt;p&gt;그리고 DB를 위해 MySQL 컨테이너도 띄우고 (마찬가지로 제일 익숙한 것으로 했습니다.) Docker Compose를 통해 둘을 연결했습니다. 이후 Airflow를 따로 띄운뒤, 만든 웹서버에 HTTP Request를 하는 함수를 &lt;code class=&quot;highlighter-rouge&quot;&gt;PythonOperator&lt;/code&gt;로 호출하는 간단한 DAG을 작성했습니다. 여기서 “웹서버에 연결하려면 DAG에서 어떤 주소를 넣어줘야 하는가?”를 트러블슈팅하느라 많이 헤맸는데요. 팀원 험프리의 도움으로 결국 해결할 수 있었습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-onboarding/onboarding-crying.png&quot; alt=&quot;온보딩 과제 - 트러블슈팅 과정&quot; /&gt;
+&lt;em&gt;트러블슈팅 기록 - 중간중간 오열했습니다.&lt;/em&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;3-airflow---간단한-dag-만들어서-실행하기&quot;&gt;3) Airflow - 간단한 DAG 만들어서 실행하기&lt;/h4&gt;
+
+&lt;p&gt;이 과제는 &lt;code class=&quot;highlighter-rouge&quot;&gt;PythonOperator&lt;/code&gt;를 이용한 간단한 Airflow DAG을 만들고, 팀의 CI/CD 환경에 배포 및 실행해보는 내용이었습니다. 특정 기능을 구현하는 것보다 팀 업무 환경에 익숙해지기 위한 과제였습니다. 다른 과제보다 수월하게 진행할 수 있었습니다. 또한 저희팀 Git Repository에 다양한 샘플 DAG 코드가 업로드되어 있어서, DAG의 기본 구조 이해에 도움이 되었습니다.&lt;/p&gt;
+
+&lt;p&gt;이 과제에서 생성한 DAG 안의 Task의 내용 자체는 매우 단순했지만 (print 문 등), 대신 Task 하나를 실행하거나 여러 Task를 병렬 처리하는 DAG를 생성해봤습니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;4-kubernetes---helm-chart를-작성하여-웹서버를-kubernetes에-배포하기&quot;&gt;4) Kubernetes - Helm chart를 작성하여 웹서버를 Kubernetes에 배포하기&lt;/h4&gt;
+
+&lt;p&gt;이 과제는 간단한 API 서버를 구축하고 Docker로 빌드하여 GCR(Google Container Registry)에 이미지로 Push한 뒤, Helm Chart를 작성하여 이 이미지를 GKE(Google Kubernetes Engine)에 배포하는 과정이었습니다. Helm Chart 기능들을 배우면서 팀 환경에도 익숙해지기 위한 과제였습니다.&lt;/p&gt;
+
+&lt;p&gt;이 과제에서도 웹 프레임워크는 딱히 정해지지 않았지만, 팀에서 FastAPI를 자주 쓰고 있었기 때문에 겸사겸사해서 FastAPI로 웹서버를 구현했습니다. (이 과정에서 저만의 셀프 FastAPI 온보딩 과제- 간단한 CRUD 서버 구축해보기도 있었습니다.)&lt;/p&gt;
+
+&lt;p&gt;Helm Chart를 직접 만들고 &lt;code class=&quot;highlighter-rouge&quot;&gt;values.yaml&lt;/code&gt; 을 작성하는 방법, GKE 환경을 설정하는 방법 등 짧은 시간에 많은 걸 접하고 배울 수 있었습니다. 처음에는 Kubernetes의 개념을 익히기 위해 minikube 로 테스트를 해봤고, 나중엔 팀 GKE에서 실습했습니다. 회사 GKE에서만 할 수 있는 설정들(GCR에 있는 이미지 Pull, Ingress 할당 등)이 있어서 조금 헤맸던 기억이 있습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;과제-후-얻은-것&quot;&gt;과제 후 얻은 것&lt;/h3&gt;
+
+&lt;p&gt;이렇게 4개의 온보딩 과제를 완료하는데 총 2주가 걸렸습니다. 신입 입장에서 이렇게 전체적으로 업무의 흐름을 파악하는 시간이 주어진 게 정말 감사한 일이었습니다. 👍&lt;/p&gt;
+
+&lt;p&gt;모든 회사에서 이런 기회가 주어지지 않는다는 것을 알기에 더욱 소중한 시간이었습니다.&lt;/p&gt;
+
+&lt;p&gt;가장 큰 장점은 &lt;strong&gt;“업무 적응에 대한 심적 부담이 크게 줄었다!”&lt;/strong&gt;입니다. 사실 데이터 엔지니어링 팀에 필요한 도메인이 매우 넓은데, 관련 경험이 거의 없어서 처음에 막연한 두려움이 있었습니다. 그런데 Task 자체는 매우 단순화한 상태에서 프레임워크를 사용해보고 플로우를 익혀보니, 좀 더 복잡한 업무도 “아, 일단 이건 해봤으니까 여기서 발전해나가면 되겠구나!” 하는 자신감이 생겼습니다.&lt;/p&gt;
+
+&lt;p&gt;첫 환경 세팅이나 배포의 난관을 온보딩 과제를 통해 극복할 수 있던 것도 큰 의미가 있었습니다. 프레임워크뿐만 아니라 &lt;a href=&quot;https://k8slens.dev/&quot; target=&quot;_blank&quot;&gt;Lens&lt;/a&gt; 등 팀에서 활용하고 있는 모니터링 도구도 이때 빨리 접할 수 있었습니다. 팀 문서나 코드도 점점 눈에 들어오기 시작했습니다. 그리고 트러블슈팅 과정을 기록한 것들을 공유하며, 제가 어떤 부분에서 부족한지 팀원들의 피드백을 받아볼 수 있어서 좋았습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;마무리-발표&quot;&gt;마무리 발표&lt;/h3&gt;
+
+&lt;p&gt;이렇게 2주 동안 과제를 수행한 뒤, 온보딩 과제를 회고하는 발표를 하게 되었습니다. 주로 온보딩 과제와 트러블 슈팅 내용들, 제가 느꼈던 감정들 위주였습니다. 발표 후, 이런 식으로 온보딩 과정을 발전 및 정착시켰으면 좋겠다는 논의도 나왔습니다. 앞으로 더 개선된 온보딩 과정이 기대됩니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-onboarding/onboarding-pitch-airflow.png&quot; alt=&quot;온보딩 발표 중 Airflow&quot; /&gt;
+&lt;em&gt;트러블슈팅 과정 설명&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-onboarding/onboarding-pitch-graph.png&quot; alt=&quot;과제에 따른 감정 변화&quot; /&gt;
+&lt;em&gt;과제에 따른 감정 변화&lt;/em&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;그-외-온보딩--밍글링-과정&quot;&gt;그 외 온보딩 &amp;amp; 밍글링 과정&lt;/h3&gt;
+&lt;p&gt;이런 온보딩 과제 외에도 쏘카에서는 다양한 방법으로 적응을 도와주는 아래와 같은 과정이 있습니다. 이런 과정들을 통해 쏘카 데이터 그룹 팀원들과 좀 더 친해지고, 빨리 적응할 수 있었습니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;1-각종-온보딩-세션&quot;&gt;1) 각종 온보딩 세션&lt;/h4&gt;
+&lt;p&gt;회사 차원에서 PX(People Experience)팀에서 하루 정도 시간을 잡고 쏘카 회사의 히스토리와 문화에 대해서 알려주는 온보딩 과정이 있었습니다. 또한 PX팀과 따로 1:1 로 티타임을 하고, 온보딩 과정에 대한 만족도 조사를 하는 등 신규 입사자를 세심하게 신경 써주는 느낌을 받았습니다.  데이터 그룹 단위에서는 팀장인 토마스가 3번에 걸쳐 1:1로 한 시간씩 쏘카 데이터 그룹의 인프라와 히스토리를 설명해주는 시간이 있었습니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;2-라이브-슬랙&quot;&gt;2) 라이브 슬랙&lt;/h4&gt;
+
+&lt;p&gt;라이브 슬랙은 데이터 그룹엔 신규 입사자가 자기를 소개하는 PPT를 한 장으로 만들어 슬랙(업무용 메신저)에 올리면, 데이터 그룹 전체가 질문하고 신규 입사자는 15분 동안 열심히 답변하는 이벤트입니다. 순발력과 빠른 타자 실력이 요구되었습니다. 참고로 이 문화는 VCNC에서 진행하는 라이브 슬랙을 참고했다고 합니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-onboarding/live-slack.png&quot; alt=&quot;하디의 레전드 질문&quot; /&gt;
+&lt;em&gt;인상 깊었던 하디의 레전드 질문&lt;/em&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;3-해피아워&quot;&gt;3) 해피아워&lt;/h4&gt;
+
+&lt;p&gt;데이터 그룹은 한 달에 한 번 금요일 오후에 해피아워를 진행합니다. 해피아워는 다양한 데이터 그룹의 사람들이 서로 친해지며 휴식하는 시간입니다. 코로나가 심하지 않을 때는 영화를 보거나 맥주를 마시러 가기도 했다고 합니다. 코로나 시국에는 비대면으로 마피아게임, 캐치마인드, 몸으로 말해요 등 여러 액티비티를 경험했습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-onboarding/happy-hour.png&quot; alt=&quot;해피아워 공지&quot; /&gt;
+&lt;em&gt;지금은 제가 해피아워 공지를 올립니다.&lt;/em&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;3-실무-투입-과정-&quot;&gt;3. 실무 투입 과정 &lt;a name=&quot;after-onboarding&quot;&gt;&lt;/a&gt;&lt;/h2&gt;
+
+&lt;p&gt;이렇게 온보딩 과제를 마무리한 후에도 조금씩 업무에 투입되었습니다. 이 기간에 팀원 그랩이 추천해준 &lt;a href=&quot;http://www.yes24.com/Product/Goods/89607047&quot; target=&quot;_blank&quot;&gt;“Kubernetes in Action”&lt;/a&gt;이라는 책을 읽으며 정리했습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;첫-프로젝트--메타데이터-플랫폼-구축&quot;&gt;첫 프로젝트 : 메타데이터 플랫폼 구축&lt;/h3&gt;
+
+&lt;p&gt;입사 후 처음 맡게 된 프로젝트입니다. 쏘카에선 개발 직군, 비개발 직군 상관없이 많은 분들이 데이터를 적극적으로 이용하고 있습니다. 점점 더 데이터가 복잡해지고 이용자가 늘어나는 상황에서 “어떤 데이터가 어디에 있는지”, “특정 테이블 혹은 칼럼은 어떤 정보를 담고 있는지”, 즉 메타데이터를 쉽게 파악하는 일이 중요해졌습니다.&lt;/p&gt;
+
+&lt;p&gt;이런 메타데이터의 효율적 관리를 위한 “전사적 메타데이터 플랫폼”을 도입하는 과정에 카일과 함께 참여하게 되었습니다. 현재는 &lt;a href=&quot;https://github.com/linkedin/datahub&quot; target=&quot;_blank&quot;&gt;Datahub&lt;/a&gt;라는 프레임워크를 선택하여 GKE에서 테스트 과정 중에 있으며, 추후 전사 플랫폼으로 도입할 예정입니다. 기획 단계부터 리서치, 테스트와 배포와 커스텀 기능 개발까지 경험할 수 있어서 정말 재밌게 하고 있습니다.&lt;/p&gt;
+
+&lt;p&gt;구체적으로는 다음과 같은 일들을 해볼 수 있었습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Data Ingestion 과정을 Docker 이미지로 만들고 Airflow DAG에 연동하여 스케줄링하기&lt;/li&gt;
+  &lt;li&gt;Ingestion을 수행하는 계정 권한을 최소화하기 위해 자체 메타데이터 추출 로직 개발하기&lt;/li&gt;
+  &lt;li&gt;Helm Chart, ArgoCD를 이용하여 GKE에 배포하기&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;아래는 Datahub 공식 사이트에서 제공하는 &lt;a href=&quot;https://demo.datahubproject.io/&quot; target=&quot;_blank&quot;&gt;데모 사이트&lt;/a&gt;의 스크린샷입니다. 이 플랫폼이 완성되면 또 다른 글로 찾아오겠습니다 :)&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-onboarding/datahub-demo-main.png&quot; alt=&quot;Datahub 데모 메인 스크린샷&quot; /&gt;
+&lt;em&gt;Datahub - 데모 메인 페이지.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-onboarding/datahub-demo-bigquery.png&quot; alt=&quot;Datahub 데모 빅쿼리 스크린샷&quot; /&gt;
+&lt;em&gt;Datahub - 데모 상세 페이지.&lt;/em&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;각종-파티-참여&quot;&gt;각종 파티 참여&lt;/h3&gt;
+
+&lt;p&gt;“파티”는 데이터 엔지니어링 팀에서 도입한 업무 형태입니다. 쉽게 말해 “중장기 프로젝트”라고 보시면 됩니다.&lt;/p&gt;
+
+&lt;p&gt;데이터 엔지니어링 팀에서 해결해야 하는 문제를 파티의 주제로 선정하고, 관련된 사람들이나 혹은 해당 주제에 관심 있는 사람들을 모아 킥오프를 합니다. 파티의 리더인 파티장은 팀원 중 한 명이 맡게 되며, 파티장을 돌아가면서 할 수도 있습니다.&lt;/p&gt;
+
+&lt;p&gt;파티는 여러 “시즌”이 있고, 한 시즌 안에는 여러 “액트(Act)”가 있습니다. 각자의 업무와 시간, 우선순위 등을 고려하여 필요한 일감을 시즌과 액트로 나누고 파티원들에게 일감을 분배합니다. 그리고 정기 회의를 통해 진행 상황을 리뷰하고 한 액트 혹은 시즌이 끝나면 회고하는 시간을 가집니다.&lt;/p&gt;
+
+&lt;p&gt;현재 데이터 엔지니어링 팀에서 진행하는 파티는 로그 시스템, 가격 시스템, 데이터 마트 등 여러 분야가 있습니다.&lt;br /&gt;
+제가 현재 참여하고 있는 파티는 다음과 같습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;소다 스토어 파티&lt;/strong&gt; - 쏘카의 데이터를 깔끔하고 편리하게&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;소다 스토어는 쏘카의 데이터를 한눈에 볼 수 있는 데이터 마트입니다. 자세한 설명은 &lt;a href=&quot;https://tech.socarcorp.kr/data/2021/03/24/what-socar-data-engineering-team-does.html&quot; target=&quot;_blank&quot;&gt;쏘카 데이터 그룹 - 데이터 엔지니어링 팀이 하는 일&lt;/a&gt;에서 볼 수 있습니다.&lt;/li&gt;
+  &lt;li&gt;이 파티에서 쿼리의 확장성과 모듈화를 위해 &lt;a href=&quot;https://www.getdbt.com/&quot; target=&quot;_blank&quot;&gt;dbt&lt;/a&gt;라는 도구를 소다 스토어와 관련된 쿼리에 적용하는 작업을 하고 있습니다.&lt;/li&gt;
+  &lt;li&gt;또한 dbt를 적용하는 대부분의 과정을 자동화하는 CLI를 만드는 과정에 참여하고 있습니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-onboarding/shamanism-engineering.png&quot; alt=&quot;샤머니즘 엔지니어링&quot; /&gt;
+&lt;em&gt;페어코딩 중 코드가 돌아가길 기도하고 있는 모습&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;소다 로그 파티&lt;/strong&gt; - 쏘카의 모든 로그를 효율적으로 관리한다&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;쏘카의 모든 로그를 잘 가공하여 사용자가 잘 사용할 수 있도록 만드는 파티입니다.&lt;/li&gt;
+  &lt;li&gt;이 파티에서 기존 레거시 서버에 있는 로그 적재용 Airflow DAG들을 Kubernetes 환경으로 안전하게 옮기는 일을 하고 있습니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;온보딩-과정이-어떻게-도움-되었나요&quot;&gt;온보딩 과정이 어떻게 도움 되었나요?&lt;/h3&gt;
+
+&lt;p&gt;메타데이터 프로젝트에선 플랫폼에 메타데이터 주입 과정을 커스텀화 하기 위해서 Docker Image를 직접 빌드해야 했습니다. 온보딩 과제에서 Docker Image를 만들고 관련 명령어를 다뤄본 경험을 활용할 수 있었습니다. 그리고 이렇게 만든 Docker Image를 Airflow의 &lt;code class=&quot;highlighter-rouge&quot;&gt;KubernetesPodOperator&lt;/code&gt;로 실행해 배포하는 과정도 필요했습니다. 이 과정 역시 온보딩 과제 중 간단한 Airflow DAG을 만들고 배포해본 경험에서 응용할 수 있었습니다.&lt;/p&gt;
+
+&lt;p&gt;또한 Datahub를 Helm chart를 이용하여 GKE에 배포해야 했습니다. 이 역시 온보딩 과제에서 Helm Chart로 GKE로 배포해보았던 경험이 도움 되었습니다. 물론 온보딩 때보다 Datahub의 차트가 훨씬 복잡했지만, 기본적인 플로우를 이해하고 있는 것이 큰 도움이 되었습니다.&lt;/p&gt;
+
+&lt;p&gt;소다 로그 파티에서는 기존 레거시 서버에서 쿠버네티스로 DAG을 옮기는 과정에서, Airflow DAG의 설정을 수정하고 GitHub Repository를 통해 DAG을 CI/CD 파이프라인으로 배포해야 했습니다. 이 과정에서도 Airflow 관련 온보딩 경험을 다시 한번 활용할 수 있었습니다.&lt;/p&gt;
+
+&lt;p&gt;결과적으로, 초기 업무를 할 때 온보딩 과제를 정리한 글을 20번 넘게 스스로 참고할 정도로 실질적인 도움이 되었습니다. 이렇게 보니 온보딩 과정이 없으면 정말 큰일 날뻔했네요 😂&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;4-앞으로는-무엇을-&quot;&gt;4. 앞으로는 무엇을? &lt;a name=&quot;throwback&quot;&gt;&lt;/a&gt;&lt;/h2&gt;
+
+&lt;p&gt;많은 분의 도움이 있었던 온보딩 기간을 거치고, 앞으로 회사에서 하고 싶은 것이 생겼습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;여러-사람이-편해지는-시스템이나-도구를-만들고-싶어요&quot;&gt;여러 사람이 편해지는 시스템이나 도구를 만들고 싶어요.&lt;/h3&gt;
+
+&lt;p&gt;데이터 엔지니어링 업무 자체가 서포팅의 성격이 있습니다. 회사에서 저뿐만이 아니라 여러 사람이 편해지는 시스템이나 도구를 만들고 싶습니다.&lt;br /&gt;
+예를 들면 “디니의 트러블슈팅 DB”를 만들고 있는데요. 지금 트러블슈팅한 과정을 미래의 나 혹은 다른 사람이 구글링처럼 편하게 검색하고 찾을 수 있었으면 좋겠다는 생각에서 시작되었습니다.&lt;/p&gt;
+
+&lt;p&gt;그리고 제가 온보딩 과정에서 도움을 많이 받은 만큼 다음 오시는 분을 위해 온보딩 과정을 더욱 발전시키고 싶습니다. 개인적인 경험으로는 ArgoCD를 통한 배포와, Python 협업 환경(테스트 코드 짜기, 디버깅 하기 등)에 대한 온보딩 등이 추가되면 더 좋겠다고 느꼈습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;문화-개선에-기여하고-싶어요&quot;&gt;문화 개선에 기여하고 싶어요.&lt;/h3&gt;
+
+&lt;p&gt;함께 일하기 즐거운 회사가 되면 좋겠다는 소망이 있고, 제가 할 수 있는 것부터 하려고 노력 중입니다.
+예를 들면 데이터 그룹 해피아워, 워크샵 등 밍글링 행사의 기획을 맡고 있고, “코딩 안풀릴때 소리지르는 방” 슬랙 채널 개설해서 다들 일하다 마음껏 소리지르는 (…) 공간을 만들었어요.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-onboarding/screaming.png&quot; alt=&quot;코딩 안될때 소리지르는 짤&quot; /&gt;
+&lt;em&gt;입사 이후 최대의 업적 : 코딩 안될때 소리지르는 방 만든 것.&lt;/em&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;많이-공유하고-싶어요&quot;&gt;많이 공유하고 싶어요.&lt;/h3&gt;
+
+&lt;p&gt;취업 준비 할 때 쏘카 기술 블로그를 많이 참고하기도 했고 공부하면서 언제나 다른 사람의 글을 보며 배우고 있기 때문에, 항상 유용한 글을 쓰고 싶다는 마음이 있습니다. 곧 메타데이터 플랫폼 글로 돌아오겠습니다. 😏&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;5-q--a-&quot;&gt;5. Q &amp;amp; A &lt;a name=&quot;qna&quot;&gt;&lt;/a&gt;&lt;/h2&gt;
+&lt;p&gt;마지막으로 취업을 준비하면서 스스로 궁금했던, 그리고 비슷한 과정에 계실 분들이 궁금할만한 질문들과 이에 대한 답변을 정리해보았습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;실무에서-데이터-분석가데이터-사이언티스트와-데이터-엔지니어의-차이는&quot;&gt;실무에서 데이터 분석가(데이터 사이언티스트)와 데이터 엔지니어의 차이는?&lt;/h3&gt;
+
+&lt;p&gt;데이터 분석가와 데이터 사이언티스트 분들이 맘껏 능력 발휘할 수 있는 탄탄한 플레이그라운드를 만드는 것이 데이터 엔지니어링의 역할인 것 같습니다. 취업 준비할 때는 데이터 관련 직군 간의 업무 차이가 잘 와닿지 않았는데, 실무를 경험해보니 담당하는 업무가 확연히 다른 것 같습니다. (물론 회사마다 정의가 다르고, 작은 규모에서는 같이 하시는 분들도 있을 것 같습니다)&lt;/p&gt;
+
+&lt;p&gt;아주 단순하게 얘기하자면 데이터 분석가는 말 그대로 ‘분석가’, 데이터 엔지니어는 ‘개발자’의 모습에 가깝다고 생각합니다. 어떤 목적을 해결하기 위해 데이터를 통해 분석하거나 사업적인 고민하는 것이 좋다면 데이터 분석을, 시스템 구축과 자동화, 프로그래밍 자체에 관심이 많다면 데이터 엔지니어링이 더 맞지 않을까 싶습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;비전공자-문과라는-백그라운드가-회사에서-어떻게-작용하는지&quot;&gt;비전공자, 문과라는 백그라운드가 회사에서 어떻게 작용하는지?&lt;/h3&gt;
+
+&lt;p&gt;저도 이 점에 대해서 걱정했는데, 저희 팀에는 오히려 비전공자가 더 많고 중요한 건 아무도 과(와 학교)에 신경을 쓰지 않습니다. 그런 백그라운드보다 요구하는 일을 할 수 있는 실력이 더 중요하다고 느꼈습니다.&lt;/p&gt;
+
+&lt;p&gt;그리고 커뮤니케이션 능력은 어디서 무슨 일을 하든 무조건 플러스라고 생각합니다. 회사에 와서 보니 의사결정, 우선순위 산정 등 다른 게 더 중요할 수도 있다는 생각이 들었습니다. &lt;a href=&quot;https://eoeoeo.net/2021/08/12/%EB%B0%B0%EB%8B%AC%EC%9D%98%EB%AF%BC%EC%A1%B1-ceo%EA%B0%80-%EB%A7%90%ED%95%98%EB%8A%94-%ED%95%A8%EA%BB%98-%EC%9D%BC%ED%95%98%EA%B3%A0-%EC%8B%B6%EC%9D%80-%EA%B0%9C%EB%B0%9C%EC%9E%90%EC%9D%98-%EA%B8%B0/&quot; target=&quot;_blank&quot;&gt;배달의 민족 CEO 인터뷰&lt;/a&gt;에서 “개발자는 비즈니스 문제를 해결하는 사람”으로 정의하길 바란다는 말씀을 합니다. 이와 같이 코딩 뿐만 아니라 문제 해결에 지치지 않고 재밌어한다면 개발자가 잘 맞을 것 같습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;신입-데이터-엔지니어를-희망한다면-어떻게-포트폴리오를-꾸리면-좋을까&quot;&gt;신입 데이터 엔지니어를 희망한다면 어떻게 포트폴리오를 꾸리면 좋을까?&lt;/h3&gt;
+
+&lt;p&gt;개인적으로는 데이터 엔지니어링이 참 포트폴리오를 준비하기 힘든 분야라고 느꼈습니다. 소소하지만 저의 팁을 공유합니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;1-가고-싶은-회사가-어떤-환경인지-보고-공부하자&quot;&gt;1) 가고 싶은 회사가 어떤 환경인지 보고 공부하자.&lt;/h4&gt;
+
+&lt;p&gt;가고 싶은 회사의 채용공고를 꼼꼼히 읽고, 어떤 툴과 프레임워크를 쓰는지 보시면서 그 프레임워크에 대한 공부를 하시면 좋을 것 같습니다&lt;/p&gt;
+
+&lt;p&gt;저희가 알고 있는 IT 기업들은 AWS, GCP, Hadoop 이 선에서 크게 달라지지 않는다고 생각합니다. 온라인 강의 사이트에서 이런 프레임워크를 타겟으로 한 강의를 참고하시면 좋을 것 같습니다.&lt;/p&gt;
+
+&lt;p&gt;쏘카 데이터 그룹은 기본적으로 GCP(Google Cloud Platform)를 이용하고 있기 때문에, 개인적으로 &lt;a href=&quot;https://www.qwiklabs.com/&quot; target=&quot;_blank&quot;&gt;Qwiklabs&lt;/a&gt; 플랫폼의 GCP 관련 실습 강의(ex.&lt;a href=&quot;https://www.qwiklabs.com/quests/132&quot; target=&quot;_blank&quot;&gt;Engineer Data in Google Cloud&lt;/a&gt;)가 많은 도움되었습니다. Hadoop의 경우 조금 오래된 강의지만 &lt;a href=&quot;https://www.udemy.com/&quot; target=&quot;_blank&quot;&gt;Udemy&lt;/a&gt; 플랫폼의 &lt;a href=&quot;https://www.udemy.com/course/the-ultimate-hands-on-hadoop-tame-your-big-data/&quot; target=&quot;_blank&quot;&gt;The Ultimate Hands-On Hadoop&lt;/a&gt; 강의를 통해 기본 개념을 익힐 수 있었던 기억이 납니다. 이 외에도 &lt;a href=&quot;https://www.udacity.com/&quot; target=&quot;_blank&quot;&gt;Udacity&lt;/a&gt;, &lt;a href=&quot;https://www.oreilly.com/&quot; target=&quot;_blank&quot;&gt;O’Reilly&lt;/a&gt; 등의 강의 플랫폼에서 유용한 강의들을 찾으실 수 있습니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;2-나만의-작고-귀여운-etl-파이프라인을-만들어보자&quot;&gt;2) 나만의 작고 귀여운 ETL 파이프라인을 만들어보자.&lt;/h4&gt;
+
+&lt;p&gt;데이터 엔지니어링 분야에서 가장 무난하게 포트폴리오를 만들 수 있는 것은 ETL 파이프라인이라고 생각합니다. 꼭 가고 싶은 회사의 프레임워크와 일치하지 않아도 상관없으니, 관심 있는 API 데이터를 ETL 하는 파이프라인을 만들어보면 관련된 아이디어를 발전시킬 수 있을 거라 생각합니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;3-블로그를-잘-관리하자&quot;&gt;3) 블로그를 잘 관리하자.&lt;/h4&gt;
+
+&lt;p&gt;신입 입장에서 이력서로 엄청난 차이를 보여주기는 쉽지 않다고 생각합니다. 이럴 때, 본인을 설명해줄 수 있는 개인 블로그나 포트폴리오 사이트가 있으면 좋습니다. 글이 완벽하지 않더라도 공부한 것들이나 관심있는 내용을 작성하면 좋은 것 같습니다.&lt;/p&gt;
+
+&lt;p&gt;여기까지 데이터 엔지니어링팀 디니의 4개월 신입 회고였습니다.  온보딩 과정을 도와주신 팀원분들 이 자리를 빌어 다시 한번 감사드립니다.&lt;br /&gt;
+긴 글 읽어주셔서 감사합니다. 궁금한 점이 있으시면 언제든 댓글 남겨주세요 :)&lt;/p&gt;</content><author><name>dini</name></author><category term="data" /><category term="data" /><category term="data-engineering" /><summary type="html">안녕하세요! 쏘카 데이터 엔지니어링 팀의 디니입니다.</summary></entry><entry><title type="html">수요일엔 수요미식회, 금요일은 개발밋업회</title><link href="https://tech.socarcorp.kr/dev/2021/11/01/socar-developer-meetup.html" rel="alternate" type="text/html" title="수요일엔 수요미식회, 금요일은 개발밋업회" /><published>2021-11-01T00:00:00+00:00</published><updated>2021-11-01T00:00:00+00:00</updated><id>https://tech.socarcorp.kr/dev/2021/11/01/socar-developer-meetup</id><content type="html" xml:base="https://tech.socarcorp.kr/dev/2021/11/01/socar-developer-meetup.html">&lt;div class=&quot;photo-copyright&quot;&gt;
+Photo by DaeHyun Kim
+&lt;/div&gt;
+
+&lt;p&gt;안녕하세요. 모빌리티 시스템 그룹 - 모비딕 팀의 스팍입니다.&lt;br /&gt;
+쏘카에서 최근에 진행한 밋업회에 대한 내용을 이 글에서 공유해봅니다.&lt;/p&gt;
+
+&lt;h2 id=&quot;회사가-10년이-되었습니다&quot;&gt;회사가 10년이 되었습니다.&lt;/h2&gt;
+
+&lt;p&gt;저는 쏘카의 초창기 멤버라고 말할 수는 있어도 창립 멤버는 아닙니다. 쏘카가 제주에서 시작한 지 2년 정도 지나 서울로 진출을 시작했을 때 합류했습니다.&lt;/p&gt;
+
+&lt;p&gt;다만 운 좋게도 쏘카의 고속 성장 직전에 합류할 수 있었습니다. 제가 입사할 때만 하더라도 개발자는 저 포함 고작 네 명이었습니다. 회의를 진행하기 매우 편한 환경이였습니다. 그냥 그 자리에서 뒤로 돌아앉기만 하면 그만이었거든요.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/socar-dev-meetup/20131226_112006.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;이랬던 조직이 회사의 성장 속도에 따라 급작스레 커지면서 점점 고민이 생기게 됩니다.&lt;/p&gt;
+
+&lt;p&gt;그중에 가장 고민인 부분은 &lt;strong&gt;사람들 사이의 거리가 멀어지는 것&lt;/strong&gt; 입니다. 이 고민은 문제가 있어 발생하는 것이 아니라 조직이 커지다 보니 자연스레 발생하는 일입니다. 저 위의 사진에 있는 사람들이 조직이 커지면서 각각 프론트팀, 백엔드팀, 인프라팀 등으로 나뉘었다고 생각하면 됩니다.&lt;/p&gt;
+
+&lt;p&gt;그리고 다음과 같은 고민이 추가적으로 생기기 시작합니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;조직이 분화와 더불어 개인의 성향을 어떻게 고려할 수 있을까? 쉽게 표현하자면, 건물의 대들보, 기둥, 서까래들이 한곳에 모여있을 땐 괜찮았지만, 각각 흩어져서 새로운 집의 자재가 되려 하니 필요로 하는 특성을 발휘하지 못하는 경우가 발생합니다.&lt;/li&gt;
+  &lt;li&gt;성장에 초점이 맞춰져 있는 스타트업의 경우, 급속한 성장의 흐름을 타기 시작하면 일반적인 개발 조직에서 챙겨야 할 것들을 놓칠 수 있습니다. 대표적인 것이 문서화인데, 다 챙기려는 노력을 하지만 문서가 누락이 되는 경우가 존재합니다. 특정 부분의 히스토리가 잘 남지 않는 문제가 발생합니다. 많은 회사에서 경험할 수 있는 상황입니다.&lt;/li&gt;
+  &lt;li&gt;급속도로 조직이 성장하다 보니, 회사도 조직의 “구심점”이 되어주는 사람을 어떻게 키울지 고민하게 됩니다. 물론 회사의 각 조직장을 담당하는 분들이 구심점 역할을 하지만, 조직이 점점 커지면서 다양한 역할을 세분화할 필요가 있습니다. 한 조직에는 분위기 메이커도 필요하고 멘토도 필요합니다. 마치 연극처럼 각자의 역할을 맡아주는 사람들이 필요한 것이죠. 이런 사람들이 많으면 많을수록 조직의 생동감이 늘어난다고 봅니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;그리하여, 이러한 문제들을 해결하기 위한 시도로 쏘카 내에서 개발밋업회를 만들어 보기로 했습니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;밋업회-그거-개발자-세미나-같은-것-아닌가&quot;&gt;밋업회? 그거 개발자 세미나 같은 것 아닌가?&lt;/h2&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/socar-dev-meetup/neonbrand-1-aA2Fadydc-unsplash.jpg&quot; alt=&quot;&quot; /&gt;
+&lt;em&gt;Photo by &lt;a href=&quot;https://unsplash.com/@neonbrand&quot;&gt;NeONBRAND&lt;/a&gt; on &lt;a href=&quot;https://unsplash.com/s/photos/meetup&quot;&gt;Unsplash&lt;/a&gt;&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;틀린 말은 아닙니다. 실제로 많은 개발자 밋업이 기술 교류와 세미나로 이루어지고 있습니다. 그리고 이런 문화의 원류를 찾아 거슬러 올라가 보면 &lt;a href=&quot;https://en.wikipedia.org/wiki/Homebrew_Computer_Club&quot;&gt;HomeBrew Compute Club&lt;/a&gt;을 만나게 됩니다. 그리고 우리가 다들 아는 이바닥의 구루이자 전설 아닌 레전드들이 왕년에 저 멤버로 참여하셨죠. 그러한 대표적인 예로 스티브 워즈니악이 있습니다.&lt;/p&gt;
+
+&lt;p&gt;주목할 것은 저 그룹은 해커들의 취미생활이자 소셜 네트워크의 기능을 했다는 것입니다. 서로의 지식을 공유하고 취미로 같이 프로젝트 할 사람 모아보고 했던 그룹이라는 거죠.&lt;br /&gt;
+그렇게 놓고 보니 왠지 급속도로 확장된 조직을 급한 대로 붙여주는데에는 괜찮은 딱풀 역할을 할 만한 접근법이라는 생각이 들었습니다.&lt;br /&gt;
+그리고 스타트업의 정신이라 하면 &lt;strong&gt;일단 시작하고 본다!&lt;/strong&gt; 아니겠습니까?&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;그래서-어떻게-준비했나요&quot;&gt;그래서 어떻게 준비했나요?&lt;/h2&gt;
+
+&lt;p&gt;참고할 자료를 찾기 위해  여기저기 검색한 결과, “밋업 참관 후기”는 많지만 “밋업을 이렇게 준비했습니다” 하는 내용은 적었습니다. 하지만 그렇다고 해서 포기하기엔 &lt;del&gt;쏘카 짬밥 7년이&lt;/del&gt; 너무나 아쉬운 관계로 하나씩 만들어보기로 했습니다.&lt;/p&gt;
+
+&lt;p&gt;이런 모임을 만들 때 &lt;a href=&quot;https://ko.wikipedia.org/wiki/%EB%A7%88%EA%B7%B8%EB%82%98_%EC%B9%B4%EB%A5%B4%ED%83%80&quot;&gt;대헌장&lt;/a&gt;이 중요한 역할을 해줄 것이라 생각해서, 나름의 다음과 같은 원칙과 목표를 세웠습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;참석도 쉽고 불참도 쉬워야 합니다. 밋업회 자체가 업무처럼 되어서는 안 된다고 생각했습니다.&lt;/li&gt;
+  &lt;li&gt;서로 조직이 달라도 업무로 인해 모였을 때 필요한 아이스 브레이킹을 밋업회로 해소할 수 있어야겠죠.&lt;/li&gt;
+  &lt;li&gt;개발자들이 편하게 이야기 할 수 있도록 했습니다. 아무리 쏘카가 수평적인 조직이라 하더라도 대한민국이 동방예의지국인 이상 쉽게 이야기하기 어려운 부분도 있을 것입니다. 그러한 부분도 덜어주고 싶었습니다.&lt;/li&gt;
+  &lt;li&gt;지식과 경험을 최대한 공유할 수 있어야 합니다. 회사의 히스토리가 구전문학처럼 전해져 내려가는 것은 문제가 있지만 그렇다고 해서 그게 아예 사라져버리는 것은 더 큰 문제가 됩니다.&lt;/li&gt;
+  &lt;li&gt;안 그래도 구전문학이 문제가 되는데 밋업회마저 구전될 수는 없겠죠. 매회 나누었던 이야기들을 작게라도 기록해 나 갈수 있도록 했습니다.&lt;/li&gt;
+  &lt;li&gt;팀별로 서로 간의 사정 파악을 할 수 있어야 합니다. 사람인 이상 일하는데 마찰이 아예 없을 수는 없습니다. 그것을 쌓아만 놓기보다는 업무가 아닌 자리에서 허심탄회하게 털어버릴 수 있도록 하고 싶었습니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;위와 같은 목표를 기반으로 해서, 밋업회에서 이야기해보고 싶은 주제를 매주 제가 제시하거나 참석자들에 받아 자유롭게 생각을 나누는 방식으로 진행을 하였습니다. 일종의 오픈토론처럼 말이죠.
+토론에서 나온 이야기들은 밋업 시작 전 그날의 서기를 뽑아서 노션에 정리하도록 하였습니다. 개발밋업회를 통해 기술세미나가 열렸을 때는 구글밋 녹화기능을 이용해 사내에 세미나 녹화 파일을 공유하였습니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;밋업을-진행하고-얻은-것&quot;&gt;밋업을 진행하고 얻은 것&lt;/h2&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/socar-dev-meetup/socar-meetup.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;먼저 가장 주요한 발견으로, 조직별로 “지식의 사일로화”가 발생하고 있다는 것을 깨달았습니다. 조직이 전문 분야별로 나눠져 발달할 수는 있겠지만 상호 간에 기술 교류가 없으면 생각하지 못한 순간에 발목을 잡힙니다. 예를 들어 보자면 인프라 구조를 이해 못 해 과도한 컴퓨팅 비용을 지불한다던가, 잘못된 방식으로 배포한다던가 하는 일로 인해 시간비용을 소모하게 됩니다.&lt;br /&gt;
+당연히 이러한 일들을 개발자는 회피하고 싶기에 사내 참고할만한 기술문서를 찾게 됩니다. 하지만 지속적으로 성장하며 변화가 빈번한 조직은 문서화 프로세스 하나 잡기도 만만치가 않습니다. 따라서 조직별로 기술문서는 만들고 있어도 다른 조직에서 참고하려면 무엇이 어디에 있는지도 몰라서 헤매는 일이 발생하게 되겠죠.&lt;br /&gt;
+이러한 부분을 기술밋업회가 풀어주는데에는 성과가 있었습니다. 참석한 사람들이 궁금한 것들을 서로 물어보면서 채우기도 하고, 아예 하루 시간을 잡아 작은 세미나를 열기도 했지요. 심지어는 회사에서 권장하는 기술 블로그 쓰기에 대한 내용도 함께 이야기해볼 기회를 갖기도 했습니다.&lt;/p&gt;
+
+&lt;p&gt;또한 새로운 기술을 스터디하는 데도 도움이 된다는 것을 발견했습니다. 조직이 전문분야로 나뉘면 각자의 도메인이 발달하게 됩니다. 따라서 새로운 기술 도입을 두고 이야기할 때 각 도메인끼리의 관점을 나누는데에도 효과적입니다. 밋업회를 통해 GO 언어를 스터디 할 수 있는 기회를 갖게 되었는데, 결국엔 쏘카라는 서비스를 만들고 운영할 때 최소한 현재 기준 어떤 도메인에서든 이점이 없다는 점을 평가할 수 있었습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/socar-dev-meetup/go-tshirt.jpg&quot; alt=&quot;&quot; /&gt;
+&lt;em&gt;덤으로 중국산 티셔츠는 잘못 세탁하면 큰일 난다는 것도 배웠지요.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;그리고 고민은 나누는 것만으로도 가치가 있다는 것도 배웠습니다. 개발자 또는 한 조직의 구성원으로 털어놓기 어려운 주제도 던져봤는데 의외로 열띤 토론이 이어지는 경우가 많았습니다. 물론 밋업회 자체가 회사에서 업무 기능을 담당하지 않기에 토론 결과가 업무에 바로 반영되지는 않긴 합니다만, 서로 다른 조직끼리 “저 조직은 왜 우리와 다를까”라는 의문을 풀어주는 것만으로도 긍정적인 효과를 기대할 수 있다고 봅니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;next-step&quot;&gt;Next Step!&lt;/h2&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/socar-dev-meetup/meetup-history2.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;뒤돌아보니 정말 많은 주제들을 이야기 했군요 :)&lt;/p&gt;
+
+&lt;p&gt;제 1회 개발밋업회가 열린 날은 2021년 5월 7일입니다. 생각 같아서는 매주 열고 싶지만, 여러 가지 사정이 있어서 매주 열지는 못하고 있긴 합니다.&lt;/p&gt;
+
+&lt;p&gt;따라서 가장 중요한 다음 단계는 매주 열릴 수 있게 하는 것을 가장 큰 목표로 하고 있습니다.&lt;br /&gt;
+또한 참여하는 사람을 늘리고 싶은 욕심도 간절합니다. 경험상, 밋업회에서 세미나를 연다고 하면 온라인으로 진행해도 문전성시를 이룰 정도로 참석자가 많은데 그렇지 않은 날에는 오는 사람만 오는 날이 많습니다. 그만큼 업무가 바쁘다는 거겠죠. 그 바쁜 와중에 밋업회가 숨통을 터주고 한 주를 마무리하는 시간이 되기를 원하고 있습니다.&lt;br /&gt;
+그리고 무엇보다, 서비스를 개발하는 사람은 “내가 이것을 왜 만들지”라는 자각이 분명해야 한다고 생각합니다. 그런 자각의 유무에 따라 발생하는 품질의 차이도 만만치 않습니다. 개발밋업회가 조직 간의 경계를 허물고 서로의 이해증진을 추구한다면, 비 개발 직군의 이야기도 경청할 필요가 있다고 생각합니다. 그러한 자리를 열어주는 개발밋업회로 키워나갈까 합니다.&lt;/p&gt;
+
+&lt;p&gt;마지막으로 시간을 내어 개발밋업회에 참여해주신 많은 동료들, 특히 항상 참여해주신 맷, 인클루, 바다, 빅서, 리스본, 험프리, 주노, 라네, 토니, 레이, 그리고 좋은 세미나 만들어 제공해주신 카일, 제이든, 타일러, 모두에게 감사 인사를 드립니다!!!&lt;/p&gt;</content><author><name>spock</name></author><category term="dev" /><category term="culture" /><summary type="html">Photo by DaeHyun Kim</summary></entry><entry><title type="html">Java Map의 확장 인터페이스 NavigableMap 이야기</title><link href="https://tech.socarcorp.kr/dev/2021/10/19/sub-interfaces-navigablemap.html" rel="alternate" type="text/html" title="Java Map의 확장 인터페이스 NavigableMap 이야기" /><published>2021-10-19T00:00:00+00:00</published><updated>2021-10-19T00:00:00+00:00</updated><id>https://tech.socarcorp.kr/dev/2021/10/19/sub-interfaces-navigablemap</id><content type="html" xml:base="https://tech.socarcorp.kr/dev/2021/10/19/sub-interfaces-navigablemap.html">&lt;p&gt;안녕하세요. 모빌리티 플랫폼 그룹 모비딕팀의 레이입니다.&lt;/p&gt;
+
+&lt;p&gt;문제 하나로 글을 시작합니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;어떤 항목 중에서 임의의 선택을 하되 가중치를 두어야 한다면 어떻게 구현할 수 있을까요?&lt;/li&gt;
+  &lt;li&gt;예를 들어 빨강, 파랑, 초록 중 하나를 임의대로 추출하되 각각 5,3,2 만큼 가중치를 두고 싶습니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;뜬금없이 가중치 문제로 시작했는데, 이 글에서 제시하는 답은 아래에 있습니다.
+일단 각자 아는 방법대로 구현해 보고 제 방법과 비교해 보시기 바랍니다.&lt;/p&gt;
+
+&lt;h2 id=&quot;목차&quot;&gt;목차&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Map 인터페이스와 세 가지 기본 구현체: HashMap, LinkedHashMap, TreeMap&lt;/li&gt;
+  &lt;li&gt;Map 기능을 확장한 몇 가지 서브 인터페이스&lt;/li&gt;
+  &lt;li&gt;오늘의 주제: NavigableMap&lt;/li&gt;
+  &lt;li&gt;NavigableMap 인터페이스 구현체&lt;/li&gt;
+  &lt;li&gt;간단한 사용 예제
+    &lt;ul&gt;
+      &lt;li&gt;1) 숫자 범위에 따른 값 할당&lt;/li&gt;
+      &lt;li&gt;2) 가중치 문제 풀이&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;NavigableMap 전제 조건:&lt;/li&gt;
+  &lt;li&gt;정리하며&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;map-인터페이스와-세-가지-기본-구현체-hashmap-linkedhashmap-treemap&quot;&gt;Map 인터페이스와 세 가지 기본 구현체: HashMap, LinkedHashMap, TreeMap&lt;/h2&gt;
+
+&lt;p&gt;요즘에는 인터페이스와 구현체를 구분해서 변수를 선언하는 방법이 거의 자리를 잡은 듯 합니다.
+다른 언어는 모르겠지만 자바로 제한한다면 예전에는 선언과 구현체 타입을 같게 지정하는 경우가 많았습니다.&lt;/p&gt;
+
+&lt;p&gt;초기에 인터페이스 없이 달랑 구현체만 있던 &lt;code class=&quot;highlighter-rouge&quot;&gt;Hashtable&lt;/code&gt;이야&lt;sup id=&quot;fnref:1&quot;&gt;&lt;a href=&quot;#fn:1&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt; 어쩔 수 없이&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;Hashtable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;hash&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Hashtable&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;처럼 했을 수 있지만 컬렉션 프레임워크가 생긴 1.2 시절에도 이런 스타일은 흔히 볼 수 있었습니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;HashMap&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;map&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;HashMap&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;그러다가 업계의 개발 지식이 전반적으로 높아진 덕분인지 설계와 구현을 분리한 선언을 하는 방법이 거의 필수처럼 자리잡기 시작한 듯 합니다.
+이제는 앞선 맵 할당을 다음과 같이 하는 경우가 대부분입니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;Map&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;map&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;HashMap&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;우리 관심사는 map으로서 기능, 그러니까 &lt;strong&gt;어떤 키로 대응하는(map) 값을 찾는 기능이지 맵의 구현체가 실제로 어떠한지는 관심 대상이 아닙니다.&lt;/strong&gt;&lt;sup id=&quot;fnref:2&quot;&gt;&lt;a href=&quot;#fn:2&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt;
+그런데 때로는 map의 키들이 어떤 순서를 유지하는지도 중요한 경우가 있습니다.
+이런 때 사용할 수 있도록 준비해 놓은 구현체가 &lt;code class=&quot;highlighter-rouge&quot;&gt;LinkedHashMap&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt; 입니다.
+이런 경우에도 인터페이스를 사용한 선언에 구현체를 바꿔주기만 하면 이를 사용하는 다른 곳에서는 특별히 구현을 바꾸지 않더라도 다른 Map 구현체의 특징을 활용할 수 있습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;HashMap&lt;/code&gt;은 저장하는 키에 특별한 순서를 보장하지 않습니다.
+    &lt;ul&gt;
+      &lt;li&gt;사실 대부분 map을 사용하는 목적 상 키 순서가 중요한 경우는 별로 없습니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;키가 어떤 규칙에 따라 정렬이 되기를 원한다면 &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt;을 사용하면 됩니다.&lt;/li&gt;
+  &lt;li&gt;map에 저장하는 순서에 따라 정렬이 되기를 원하면 &lt;code class=&quot;highlighter-rouge&quot;&gt;LinkedHashMap&lt;/code&gt;을 사용하면 됩니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;보통은 이렇게 키의 정렬 순서를 특정하는 목적으로 세 가지 구현체를 상황에 맞게 사용하는 경우가 대부분입니다.
+그리고 많은 사람들이 관심있는 동시성 처리와 관련한 &lt;code class=&quot;highlighter-rouge&quot;&gt;ConcurrentHashMap&lt;/code&gt; 같은 특수한 환경 아래 동작하는 구현체 이야기는 쉽게 찾아 볼 수 있는데, 이 글에서는 조금 다른 이야기를 해 보려고 합니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;map-기능을-확장한-몇-가지-서브-인터페이스&quot;&gt;Map 기능을 확장한 몇 가지 서브 인터페이스&lt;/h2&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://docs.oracle.com/javase/9/docs/api/java/util/Map.html&quot;&gt;Java API Doc&lt;/a&gt;(v9)을 보면 &lt;code class=&quot;highlighter-rouge&quot;&gt;Map&lt;/code&gt;의 서브 인터페이스는 11개 씩이나 됩니다.
+이 중에서 “Map” 하고 관계 있어 보이는 대상은 다음처럼 7개입니다&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;ConcurrentMap&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;ConcurrentNavigableMap&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;ObservableMap&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;ObservableMapValue&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;WritableMapValue&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;7가지 뿐만 아니라 11가지 인터페이스 모두를 다루었으면 좋겠지만 이 글에서는 이 중에서 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;이 무엇인지, &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;의 구현체는 무엇인지를 이야기합니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;오늘의-주제-navigablemap&quot;&gt;오늘의 주제: NavigableMap&lt;/h2&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;을 설명하는 내용부터 약간 살펴 보겠습니다.
+(&lt;a href=&quot;https://docs.oracle.com/javase/9/docs/api/java/util/NavigableMap.html&quot;&gt;https://docs.oracle.com/javase/9/docs/api/java/util/NavigableMap.html&lt;/a&gt;)&lt;/p&gt;
+
+&lt;p&gt;문서를 보면, 첫 줄에&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;A &lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt; extended with navigation methods returning the closest matches for given search targets.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;이라고 했습니다.
+이 문장이 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;의 특징을 설명하는 전부입니다.
+이어서 다음 문장을 읽어 보겠습니다.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Methods &lt;code class=&quot;highlighter-rouge&quot;&gt;lowerEntry(K)&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;floorEntry(K)&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;ceilingEntry(K)&lt;/code&gt;, and &lt;code class=&quot;highlighter-rouge&quot;&gt;higherEntry(K)&lt;/code&gt; return &lt;code class=&quot;highlighter-rouge&quot;&gt;Map.Entry&lt;/code&gt; objects associated with keys respectively less than, less than or equal, greater than or equal, and greater than a given key, returning null if there is no such key.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;이 문장에서 어떻게 사용을 하는지 잘 설명하고 있습니다.
+그런데 이 내용만 가지고 당장 어디에 써야겠다고 생각이 떠오르기는 쉽지 않습니다.
+사실 저도 그러했습니다.
+&lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;이 무엇인지는 오래 전에 공부했지만 특별히 쓸 만한 곳은 없었습니다.
+그러다가 최근 어떤 문제를 해결하려고 고민하던 중 문득 이 자료구조가 떠올랐고, 테스트 코드를 몇 줄 구현해 보면서 다행히 생각대로 잘 풀렸습니다.
+공부한지 한참 지난 후 이제서야 쏘카에서 처음으로 실제 필요한 곳에 사용할 기회가 생긴 셈이지요.&lt;/p&gt;
+
+&lt;p&gt;조금 더 API 문서를 훑어 보겠습니다.&lt;/p&gt;
+
+&lt;p&gt;이 “인터페이스”는 &lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt;&lt;sup id=&quot;fnref:3&quot;&gt;&lt;a href=&quot;#fn:3&quot; class=&quot;footnote&quot;&gt;3&lt;/a&gt;&lt;/sup&gt; 인터페이스를 상속합니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;interface&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;NavigableMap&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;K&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;V&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;extends&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;SortedMap&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;K&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;V&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;“인터페이스”를 강조했습니다.
+구현체가 아닌 인터페이스입니다.
+인터페이스니까 어떤 동작을 제공하는지 계속해서 API문서를 살펴 보겠습니다.
+앞서 보았던 두 번째 문장이 동작을 이해하려면 필요한 핵심 내용입니다.&lt;/p&gt;
+
+&lt;p&gt;jdk 버전 9 기준 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt; 고유 메서드는 21개 이지만 이 중에서도 개인적으로 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;의 특징을 잘 드러낸다고 생각하는 &lt;code class=&quot;highlighter-rouge&quot;&gt;floorEntry()&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;ceilingEntry()&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;lowerEntry()&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;higherEntry()&lt;/code&gt; 네 가지를 설명하겠습니다.&lt;/p&gt;
+
+&lt;h2 id=&quot;navigablemap-인터페이스-구현체&quot;&gt;NavigableMap 인터페이스 구현체&lt;/h2&gt;
+
+&lt;p&gt;앞에도 강조했지만 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;은 &lt;a href=&quot;https://ko.wikipedia.org/wiki/%EC%9D%B8%ED%84%B0%ED%8E%98%EC%9D%B4%EC%8A%A4_(%EC%9E%90%EB%B0%94)&quot;&gt;인터페이스&lt;/a&gt;입니다.
+그렇다면 구현체는 무엇일까요?&lt;/p&gt;
+
+&lt;p&gt;그냥 &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt;을 사용하면 됩니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;Map&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;m1&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;TreeMap&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;          &lt;span class=&quot;c1&quot;&gt;// (1)&lt;/span&gt;
+&lt;span class=&quot;nc&quot;&gt;NavigableMap&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;m2&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;TreeMap&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// (2)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;약간 혼란을 느끼는 분이 있을 수도 있는데, 그래서 앞에 “인터페이스”를 강조했습니다.
+같은 &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt; 구현체를 어떤 인터페이스로 사용하느냐에 따라 관점이 달라집니다.
+어쩌면 이 이야기가 더욱 중요합니다.
+우리의 관심사가 단순히 (키를 정렬한) &lt;code class=&quot;highlighter-rouge&quot;&gt;Map&lt;/code&gt;인지, 제시한 요소와 방향에 가장 가까운 키를 찾으려는지에 따라 같은 &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt; 구현체라 해도 사용하는 API가 다릅니다.&lt;/p&gt;
+
+&lt;p&gt;(1) 처럼 선언하면 &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt; 구현체를 &lt;code class=&quot;highlighter-rouge&quot;&gt;Map&lt;/code&gt; 인터페이스로 들여다본다는 뜻이라서 &lt;code class=&quot;highlighter-rouge&quot;&gt;Map&lt;/code&gt;이 제공하는 25개의 메서드만 사용할 수 있으나,
+(2) 처럼 선언하면 실제 메모리에 올라가는 구현체는 (1)과 같은 &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt;이지만 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;이 추가로 제공하는 고유한 메서드 21개를 더 사용할 수 있습니다&lt;sup id=&quot;fnref:4&quot;&gt;&lt;a href=&quot;#fn:4&quot; class=&quot;footnote&quot;&gt;4&lt;/a&gt;&lt;/sup&gt;.&lt;/p&gt;
+
+&lt;p&gt;당연하게도 이러한 선언은 불가능합니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;NavigableMap&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;m&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;HashMap&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+&lt;span class=&quot;nc&quot;&gt;NavigableMap&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;m&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;LinkedHashMap&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;HashMap&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;LinkedHashMap&lt;/code&gt;은 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt; 인터페이스를 상속하지 않은 구현체입니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;Map&lt;/code&gt;의 메서드는 25개나 되지만 사실상 &lt;code class=&quot;highlighter-rouge&quot;&gt;get(key)&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;put(key, value)&lt;/code&gt; 말고는 사용하는 일이 거의 없습니다.
+비슷하게 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;의 21개 메서드 중 4가지 메서드의 특징만 살펴보면 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;을 충분히 사용할 수 있으리라고 생각합니다&lt;sup id=&quot;fnref:5&quot;&gt;&lt;a href=&quot;#fn:5&quot; class=&quot;footnote&quot;&gt;5&lt;/a&gt;&lt;/sup&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;간단한-사용-예제&quot;&gt;간단한 사용 예제&lt;/h2&gt;
+
+&lt;h3 id=&quot;1-숫자-범위에-따른-값-할당&quot;&gt;1) 숫자 범위에 따른 값 할당&lt;/h3&gt;
+
+&lt;p&gt;매우 간단한 예제를 살펴 보겠습니다&lt;sup id=&quot;fnref:6&quot;&gt;&lt;a href=&quot;#fn:6&quot; class=&quot;footnote&quot;&gt;6&lt;/a&gt;&lt;/sup&gt;.&lt;/p&gt;
+
+&lt;p&gt;(1부터 100까지) 숫자 범위에 따라 다른 방을 배정하려고 합니다.
+if - else 구문을 사용하면 이 정도 되겠지요?&lt;/p&gt;
+
+&lt;div class=&quot;language-kotlin highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;num&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;75&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// num &amp;lt;= 100&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;봄&quot;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;num&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;50&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;num&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;75&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;여름&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;num&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;25&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;num&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;50&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;가을&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// num &amp;gt; 0&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;겨울&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; 
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;나쁘지 않습니다.
+아마도 여러분은 더 좋은 구현 방법을 알고 있으리라 생각합니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;으로 표현하면 어떨까요?
+지금까지 했던 이야기를 바탕으로 이미 구현 방법을 떠올린 분도 계실 수 있다고 생각합니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-kotlin highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;py&quot;&gt;m&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;NavigableMap&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;Int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;TreeMap&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;m&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;봄&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;m&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;75&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;  &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;여름&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;m&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;50&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;  &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;가을&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;m&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;25&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;  &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;겨울&quot;&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;m&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;ceilingEntry&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;num&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;getValue&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;대략 이 정도 코드인데 전반적인 느낌을 이해하기는 어렵지 않으리라 생각합니다&lt;sup id=&quot;fnref:7&quot;&gt;&lt;a href=&quot;#fn:7&quot; class=&quot;footnote&quot;&gt;7&lt;/a&gt;&lt;/sup&gt;.
+ceiling 뜻 그대로, 전달한 인자보다 큰 쪽으로 가장 인접한 키값을 찾습니다.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Returns the least key greater than or equal to the given key, or null if there is no such key.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;만약 &lt;code class=&quot;highlighter-rouge&quot;&gt;num = 69&lt;/code&gt; 였다면 69에 해당하는 키는 없지만 69보다 크면서 가장 가까운(작은) 키인 75를 선택합니다.
+즉, (75, “여름”)이 해당하는 엔트리입니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;floorEntry()&lt;/code&gt;는 반대로 전달한 인자보다 작은 쪽으로 가장 인접한 값을 찾겠지요?
+물론 위/아래로 범위를 넘어서는 값을 주면 찾을 수 있는 값이 없습니다.
+API 문서를 보면 이 경우 &lt;code class=&quot;highlighter-rouge&quot;&gt;null&lt;/code&gt;을 반환한다고 명시했습니다.
+위의 예제에서는 &lt;code class=&quot;highlighter-rouge&quot;&gt;m.ceilingEntry(101)&lt;/code&gt;이나 &lt;code class=&quot;highlighter-rouge&quot;&gt;m.floorEntry(0)&lt;/code&gt;이 &lt;code class=&quot;highlighter-rouge&quot;&gt;null&lt;/code&gt;입니다.
+이런 경우 상/하한 경계를 찾을 수 있는 장치로 &lt;code class=&quot;highlighter-rouge&quot;&gt;higherEntry()&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;lowerEntry()&lt;/code&gt;가 있습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;이 가능하려면 어떤 전제 조건이 필요합니다.
+바로 “키를 어떤 순서대로 정렬해 놓아야 한다”겠지요.
+&lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;의 상위 인터페이스가 &lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt;이기도 하지만 구현체인 &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt;이 이러한 전제 조건을 만족하는 구현체입니다.
+다른 &lt;code class=&quot;highlighter-rouge&quot;&gt;Map&lt;/code&gt; 구현체를 만들기 보다는 &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt;에 floor/ceil 등의 구현을 추가하는 편이 훨씬 합리적이었으리라 추측합니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt;을 그저 키를 정렬한 맵 정도로 쓰다가 이제는 그 안에 숨어 있던 &lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt;과 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;이라는 다른 모습을 이해했습니다.
+그렇다면 처음부터 &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt;으로 선언하면 “키가 정렬된 &lt;code class=&quot;highlighter-rouge&quot;&gt;Map&lt;/code&gt;“이라는 특징을 취하면서 동시에 &lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;이 제공하는 모든 기능을 다 쓸 수 있는데 왜 &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt;을 타입으로 쓰지 않을까요?
+이 내용은 글의 주제를 벗어나므로 깊이 다루지는 않겠지만 글 후반부에 설명하겠습니다.&lt;/p&gt;
+
+&lt;p&gt;조금 더 쓸모있는 예제를 살펴볼까요?&lt;/p&gt;
+
+&lt;h3 id=&quot;2-가중치-문제-풀이&quot;&gt;2) 가중치 문제 풀이&lt;/h3&gt;
+
+&lt;p&gt;글 처음에 보여드린 문제 풀이입니다.
+여러분은 어떤 방법으로 풀어 보셨나요? 해결 방법은 다양하지만 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;을 활용하면 비교적 간단하게 풀 수 있습니다.
+비율이 2:3:5 이므로 키를 각각 2, 5(2+3), 10(2+3+5)으로 정합니다.
+약간은 계산이 필요하네요.&lt;/p&gt;
+
+&lt;p&gt;조금 더 이해하기 쉽도록 코드 위에 주석을 활용해 간단한 그림으로 표현했습니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-kotlin highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;// | &amp;lt;-------5-------- | &amp;lt;---3---- | &amp;lt;-2-- |&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;// |         R         |     G     |   B   |&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;// 10  9   8   7   6   5   4   3   2   1  (0)&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;py&quot;&gt;map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;NavigableMap&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;Int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;TreeMap&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;빨강&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;  &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;파랑&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;  &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;초록&quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;그리고 &lt;code class=&quot;highlighter-rouge&quot;&gt;Random&lt;/code&gt;을 써서 이 맵을 탐색합니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-kotlin highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;py&quot;&gt;color&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;ceilEntry&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;Random&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;nextInt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;getValue&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;이 문제 같은 경우에는 간격이 중요합니다.
+간격만큼 랜덤으로 선택한 값이 걸릴 확률, 즉 가중치를 결정합니다.
+선택한 값에 따라 경계값으로 설정한 키를 찾아가는 구조입니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;1, 2 가 나온다면: “파랑”,&lt;/li&gt;
+  &lt;li&gt;3, 4, 5 라면: “초록”,&lt;/li&gt;
+  &lt;li&gt;6, 7, 8, 9, 10 은: “빨강”&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;을 반환하겠지요?
+문제에서 요구한 5:3:2 가중치로 항목을 선택합니다.&lt;/p&gt;
+
+&lt;p&gt;매우 직관적이면서도 간결한 구현입니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;navigablemap-전제-조건-sortedmap&quot;&gt;NavigableMap 전제 조건: SortedMap&lt;/h2&gt;
+
+&lt;p&gt;만약 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;을 구현한다고 가정한다면 키 항목 구성은 어떤 전제 조건이 필요할까요?
+&lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;에서 제시하는 키를 찾는 방법을 다시 살펴보면, 어떤 값을 주고 이 값 보다 크거나 작은 방향으로 가장 가까이 위치한 키를 찾습니다.
+즉, 키 요소를 어떤 기준에 따라 정렬해 놓지 않으면 안 됩니다.
+그래서 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;의 상위 인터페이스로서 &lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt;은 매우 자연스런 모습입니다.
+Java에서는 &lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt;이나 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt; 구현체가 따로 존재하지 않고 &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt; 하나로 이 두 가지 인터페이스를 모두 만족하도록 구현해 놓았습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;은 &lt;code class=&quot;highlighter-rouge&quot;&gt;Map&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt;을 확장(상속)한 인터페이스라서 &lt;code class=&quot;highlighter-rouge&quot;&gt;Map&lt;/code&gt;과 &lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt;에서 제공하는 api(메서드)를 모두 사용할 수 있겠지요.
+&lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt;으로 선언하든 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;으로 선언하든 어차피 &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt;을 할당해야 할 테니 구현체 차이는 없겠지만 그래도 사용 목적에 따라 적절한 인터페이스를 사용해야 합니다.
+&lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt;이 필요한 구현인데 굳이 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;으로 선언해서 훗날 코드를 읽는 누군가에게 혼란을 초래할 필요는 없겠지요.
+같은 &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt;을 할당하더라도 정말로 필요한 목적에 따라 인터페이스를 적절히 구분해 사용했을 때 해당 코드를 들어다보는 동료들이 조금이나마 모호한 상황을 훨씬 적게 겪을 수 있습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;그저 정렬된 키셋이 필요한 경우라면 &lt;code class=&quot;highlighter-rouge&quot;&gt;Map&lt;/code&gt;인터페이스로 충분합니다.&lt;/li&gt;
+  &lt;li&gt;정렬된 키를 기준으로 이런저런 부분 맵이 필요하다면 &lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt; 인터페이스를,&lt;/li&gt;
+  &lt;li&gt;키 탐색이 필요하면 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;을 사용합니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;그냥 &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt;으로 선언했다면 코드를 자세히 들여다보지 않는 이상 어떤 목적으로 사용하려 했는지 알기가 어렵겠지요.
+그나마 주석을 달아 놓았다면 조금은 덜 혼란스러울 수도 있겠지만 코드 자체에 의도와 목적을 분명하게 드러낼 수 있다면 그렇게 하는 편이 더 좋습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt;도 흥미로운 주제이니 각자 살펴 보시기 바랍니다.
+저는 아직 &lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt;을 써야 할 만한 문제를 겪지는 않았습니다.
+언젠가는 이를 써서 해결해야 할 문제를 마주하게 될 날도 오겠지요.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;정리하며&quot;&gt;정리하며&lt;/h2&gt;
+
+&lt;p&gt;Map은 상당히 많이 사용하는 자료 구조입니다.
+대부분 &lt;code class=&quot;highlighter-rouge&quot;&gt;HashMap&lt;/code&gt; 정도면 충분하지만 때로는 키 정렬 순서 때문에 &lt;code class=&quot;highlighter-rouge&quot;&gt;LinkedHashMap&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt;을 사용하는 경우가 종종 있습니다.
+비슷한 &lt;code class=&quot;highlighter-rouge&quot;&gt;HashMap&lt;/code&gt; 계열에서도 동시성 문제 때문에 &lt;code class=&quot;highlighter-rouge&quot;&gt;ConcurrentHashMap&lt;/code&gt;을 사용하는 경우도 있고 메모리 문제 때문에 &lt;code class=&quot;highlighter-rouge&quot;&gt;WeakHashMap&lt;/code&gt;을 사용하는 경우도 있지만 상황에 따라 구현체를 바꾸었을 뿐 &lt;code class=&quot;highlighter-rouge&quot;&gt;Map&lt;/code&gt; 인터페이스 범주를 벗어나지 않는 선에서 사용하는 경우가 대부분입니다.&lt;/p&gt;
+
+&lt;p&gt;내부 구현의 차이가 있지만 단순한 키 - 값 대응만 사용하는 &lt;code class=&quot;highlighter-rouge&quot;&gt;Map&lt;/code&gt; 을 넘어서 &lt;code class=&quot;highlighter-rouge&quot;&gt;Map&lt;/code&gt;의 확장 인터페이스인  &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt; 관점으로 &lt;code class=&quot;highlighter-rouge&quot;&gt;TreeMap&lt;/code&gt; 구현체를 어떻게 사용할 수 있는지 간략히 살펴 보았습니다.&lt;/p&gt;
+
+&lt;p&gt;다음에는 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;으로 조금 더 깊이 있는 활용 사례를 선보이는 시간을 갖도록 하겠습니다.&lt;/p&gt;
+
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:1&quot;&gt;
+      &lt;p&gt;엄밀히 이야기하면 &lt;code class=&quot;highlighter-rouge&quot;&gt;Hashtable&lt;/code&gt;은 추상 클래스인 &lt;code class=&quot;highlighter-rouge&quot;&gt;Dictionary&lt;/code&gt;를 상속한 구현체입니다. 자바 설계 당시 인터페이스 개념은 추상 클래스보다 늦게 도입한 개념입니다. &lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:2&quot;&gt;
+      &lt;p&gt;제네릭은 이 글에서 다루는 주제가 아니기도 하고 다룰 필요도 없어서 과감히 생략합니다. &lt;a href=&quot;#fnref:2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:3&quot;&gt;
+      &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;이 &lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt;을 상속하고 &lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt;이 &lt;code class=&quot;highlighter-rouge&quot;&gt;Map&lt;/code&gt;을 상속하니 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt; 이전에 &lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt; 특징을 설명하면 더욱 좋겠지만 주제를 벗어난다고 판단하여 생략합니다.  다만 &lt;code class=&quot;highlighter-rouge&quot;&gt;NavigableMap&lt;/code&gt;을 설명하다 보면 매우 간략하기는 해도 자연스럽게 &lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt; 특성도 언급하기는 합니다. &lt;a href=&quot;#fnref:3&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:4&quot;&gt;
+      &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;SortedMap&lt;/code&gt; 까지 생각하면 조금 차이는 있으나 넘어가겠습니다 &lt;a href=&quot;#fnref:4&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:5&quot;&gt;
+      &lt;p&gt;제가 만든 애플리케이션에서도 4개의 메서드만 사용합니다. &lt;a href=&quot;#fnref:5&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:6&quot;&gt;
+      &lt;p&gt;여기부터 편의 상 코틀린 코드를 사용합니다. &lt;a href=&quot;#fnref:6&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:7&quot;&gt;
+      &lt;p&gt;num 입력값을 1~100으로 제한하지 않으면 이 구현에는 문제가 있지만, 조건을 제한하여 실행했다고 가정한다면 문제는 없습니다. &lt;a href=&quot;#fnref:7&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/div&gt;</content><author><name>ray</name></author><category term="dev" /><category term="server" /><category term="java" /><summary type="html">안녕하세요. 모빌리티 플랫폼 그룹 모비딕팀의 레이입니다.</summary></entry><entry><title type="html">쏘카 안드로이드 팀 신입 개발자 미뇽의 입사기</title><link href="https://tech.socarcorp.kr/dev/2021/08/19/join-in-socar-android.html" rel="alternate" type="text/html" title="쏘카 안드로이드 팀 신입 개발자 미뇽의 입사기" /><published>2021-08-19T00:00:00+00:00</published><updated>2021-08-19T00:00:00+00:00</updated><id>https://tech.socarcorp.kr/dev/2021/08/19/join-in-socar-android</id><content type="html" xml:base="https://tech.socarcorp.kr/dev/2021/08/19/join-in-socar-android.html">&lt;p&gt;안녕하세요. 소프트웨어 학과를 졸업하고 올해 3월에 입사하여 쏘카 안드로이드 팀에서 일하고 있는 신입 개발자 미뇽(최민정)입니다.&lt;/p&gt;
+
+&lt;p&gt;저는 개발한 기능을 직접 사용하고 싶었기 때문에 흔히 말하는 대기업, 공기업보다 자체 서비스를 가진 IT 회사를 가고 싶었습니다. 하지만 제가 가고자 하는 IT 회사들의 정보는 턱없이 부족했고, 대학 내에서 제가 원하는 방향으로 취업을 한 사례를 찾는 것도 힘들었습니다.&lt;/p&gt;
+
+&lt;p&gt;이 글에서는 제가 취업을 준비할 당시 &lt;strong&gt;어떤 기준으로 지원할 회사를 생각했는지&lt;/strong&gt;, 그리고 &lt;strong&gt;쏘카 안드로이드 팀에 합류한 이후 신입 개발자로서 어떤 것들을 느꼈는지&lt;/strong&gt; 소개합니다. 이 글이 IT 서비스 회사로 취업을 준비하시는 분들에게 도움이 되었으면 좋겠습니다.&lt;/p&gt;
+
+&lt;h2 id=&quot;목차&quot;&gt;목차&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;입사 전
+    &lt;ul&gt;
+      &lt;li&gt;취준생 시절 회사 선정 기준&lt;/li&gt;
+      &lt;li&gt;쏘카를 선택한 이유&lt;/li&gt;
+      &lt;li&gt;아쉬웠던 점&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;입사 후
+    &lt;ul&gt;
+      &lt;li&gt;안드로이드 팀의 장점&lt;/li&gt;
+      &lt;li&gt;아쉬웠던 점&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;마무리&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;입사-전&quot;&gt;입사 전&lt;/h2&gt;
+
+&lt;h3 id=&quot;취준생-시절-회사-선정-기준&quot;&gt;취준생 시절 회사 선정 기준&lt;/h3&gt;
+
+&lt;p&gt;자신에게 맞는 회사를 택하는 것이 저와 회사의 기회비용을 줄일 수 있다고 생각했습니다. 저와 맞는 회사를 택하기 위해서는 제가 원하는 회사의 기준이 명확해야 하기 때문에, 이력서를 넣기 전에 어떤 회사에 들어가고 싶은지 기준을 정해보았습니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;1-팀-인원이-5명-이상인-회사&quot;&gt;1) 팀 인원이 5명 이상인 회사&lt;/h4&gt;
+
+&lt;p&gt;신입 개발자인 저에게 가장 중요한 요소 중 하나는 &lt;strong&gt;성장할 수 있는 회사 여부&lt;/strong&gt;입니다. 서비스 하나를 혼자서 개발하는 경험도 성장에 좋은 영향을 끼칠 수 있지만, 경험을 바탕으로 방향성을 제시해 줄 수 있는 선배가 있는 것은 성장에 더 큰 영향을 끼칠 수 있습니다.&lt;/p&gt;
+
+&lt;p&gt;또한 당장 업무에 투입되는 것보다는 업무에 대한 이해가 어느 정도 끝난 상태에서 업무를 진행하는 것이 회사와 개발자 모두에게 좋다고 생각합니다. 이렇게 방향성을 제시해 줄 선배가 있고, 업무를 이해할 시간을 확보할 환경이 마련되기 위해서는 팀 인원이 어느 정도 많아야 한다고 생각합니다. 저는 그 기준을 5명으로 잡았습니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;2-내가-사용하고-싶은-서비스를-가진-회사&quot;&gt;2) 내가 사용하고 싶은 서비스를 가진 회사&lt;/h4&gt;
+
+&lt;p&gt;회사에서 운영하는 서비스가 &lt;strong&gt;‘내가 사용하고 싶은 서비스인가?’&lt;/strong&gt;에 대해 고민해봐야 한다고 생각합니다. 회사에서 운영하는 서비스는 결국 제가 개발해야 하는 서비스입니다. 제가 사용하고 싶은 서비스를 직접 개발하고 배포하면 만족도가 더 크다고 생각합니다. 또한 직접 서비스를 사용하기도 하므로, 서비스의 개선할 점과 방향성에 대한 파악이 손쉽다고 생각합니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;3-단순한-기능feature-개발-외에-코드의-장기적인-생산성을-생각해주는-회사&quot;&gt;3) 단순한 기능(Feature) 개발 외에 코드의 장기적인 생산성을 생각해주는 회사&lt;/h4&gt;
+
+&lt;p&gt;개발자가 회사에 얻고자 하는 것은 월급뿐만 아니라 &lt;strong&gt;좋은 코드에 대한 경험&lt;/strong&gt;도 있다고 생각합니다. 하지만 회사가 좋은 코드를 위해 리소스를 투자하는 것은 당연하지 않습니다. 회사의 목적은 이익이고, 좋은 코드와 아키텍처에 대한 투자는 리소스 낭비가 될 수 있기 때문입니다. 당연하지 않은 일이기에 코드와 아키텍처에 투자하는 회사는 이에 대해 관심이 많은 회사이고, 개발자로서 좋은 코드에 대한 경험을 얻을 수 있다고 생각했습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;쏘카를-선택한-이유&quot;&gt;쏘카를 선택한 이유&lt;/h3&gt;
+
+&lt;p&gt;쏘카는 3가지 기준에 부합하는 회사입니다. 임직원이 300명 이상이고 카쉐어링이라는 매력적인 분야에 큰 입지를 가진 회사인 동시에 현재 안드로이드 팀의 인원이 5명 이상입니다. 회사의 코드와 아키텍처에 대한 정보를 온라인상에서 얻기는 어려웠으나 면접 과정에서 쏘카의 코드에 대해 자신 있게 설명하는 모습에서 좋은 코드에 투자하는 회사임을 알았습니다.&lt;/p&gt;
+
+&lt;p&gt;3가지 기준 외에도 쏘카는 데이터라는 매력 포인트를 가지고 있습니다. 쏘카는 많은 사용자를 보유한 서비스로 다양한 데이터를 가지고 있으며, 이를 활용하고자 독립적인 데이터 조직을 운영하고 있습니다. 데이터 팀에서 데이터를 분석하여 제공한 객관적인 수치를 통해 다각도로 사용자의 니즈를 파악하고 있습니다. 이러한 객관적인 자료로 제가 개발하는 기능이 어떤 영향을 끼치는지 확인할 수 있습니다. 다양한 데이터와 이를 분석하여 이용할 수 있는 능력을 갖추고 있는 것이 쏘카의 또 다른 매력 포인트입니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;아쉬웠던-점&quot;&gt;아쉬웠던 점&lt;/h3&gt;
+
+&lt;p&gt;쏘카에 입사 지원할 때 아쉬웠던 점은 팀의 기술적인 내용이나 개발 문화를 외부에서 알기 어려웠다는 점입니다. 회사에서 기술 블로그를 운영하고 있으나 실질적으로 사용하는 기술 혹은 개발문화에 관해 서술된 게시글은 없었습니다. 입사 이후 알아보니 쏘카에서 발표한 일부의 자료를 공개한 &lt;a href=&quot;https://speakerdeck.com/socar&quot;&gt;사이트&lt;/a&gt;도 있었고, 회사에서 블로그 작성을 장려하기 위해 다양한 혜택을 마련하고 있습니다. 이러한 회사의 노력은 블로그의 활성화를 가져오고 있습니다. 앞으로 &lt;a href=&quot;https://tech.socarcorp.kr&quot;&gt;블로그&lt;/a&gt;를 통해 쏘카의 기술적인 이야기를 전달해 드릴 수 있을 것 같습니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;입사-후&quot;&gt;입사 후&lt;/h2&gt;
+
+&lt;p&gt;쏘카의 문화는 수평 그 자체였습니다. 회사 내에서 닉네임을 사용하고, 닉네임 뒤에 직책, 님 등을 붙이지 않습니다. 닉네임만 수평적인 것이 아니었습니다. 회사의 모든 이들이 서로를 상호 존중하고, 회사 업무와 관련된 내용은 다 공개되며 모든 이들이 내용을 확인할 수 있게 되어있었습니다. 또한 누구든 회사에 도움이 될만한 의견과 질문하는 것을 환영합니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;안드로이드-팀의-장점&quot;&gt;안드로이드 팀의 장점&lt;/h3&gt;
+
+&lt;h4 id=&quot;1-하나의-질문에-함께-고민하는-문화&quot;&gt;1) 하나의 질문에 함께 고민하는 문화&lt;/h4&gt;
+
+&lt;p&gt;신입 개발자로 첫 회사에 입사한 만큼 사소한 것 하나조차도 질문할 수밖에 없었습니다. 팀원 그 누구도 질문을 귀찮아하지 않았습니다. 심지어 사소한 문제라 할지라도 질문을 받은 팀원 이외의 다른 팀원도 함께 관심을 두고 해당 내용을 함께 고민해주었습니다. 처음에는 익숙하지 않아 부담스럽기도 했지만 이게 안드로이드 팀의 문화라는 한 팀원의 말에 이제는 부담보다는 함께 고민해보고자 노력하고 있습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/join-in-socar-android/talk-in-slack.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;기존의 토의는 오프라인상에서 많이 이뤄졌지만, 재택근무가 많은 현시점에서는 슬랙, 디스코드를 통해 질문을 주고받습니다. 더 좋은 아이디어가 있다면 주저하지 않고 자신의 의견을 얘기하는 것이 안드로이드 팀의 문화입니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;2-적극적인-코드-리뷰&quot;&gt;2) 적극적인 코드 리뷰&lt;/h4&gt;
+
+&lt;p&gt;팀마다 규칙이 다르지만, 안드로이드 팀은 전체 팀원 중 3명 이상에게 Approve를 받아야 Merge를 할 수 있습니다. 아무리 바쁘다고 하더라도 리뷰를 대충하지 않습니다. 안드로이드 팀은 “빠르게 Merge를 해야 하는 Pull Request라면 리뷰를 대충하는 것이 아니라 리뷰에 더 많은 시간을 투자해야 한다”라는 마인드를 가지고 있습니다. 이 문화 속에서 저는 더 도움 되는 리뷰를 남겨보고자 노력 중입니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/join-in-socar-android/pull-request.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;위 사진은 입사 이후 제가 지금까지 작성한 Pull Request입니다. 네이밍부터 로직 상에 더 좋은 아이디어를 제안하는 것까지 다양한 코멘트를 작성 받아서 한 PR에 최대 84개의 코멘트를 받은 적도 있습니다. 쏘카 안드로이드 팀이 코드 리뷰하는 방법이 더 궁금하다면 &lt;a href=&quot;https://speakerdeck.com/socar/kodeu-ribyu-jeogeunggi&quot;&gt;해당 링크&lt;/a&gt;를 확인해주세요.&lt;/p&gt;
+
+&lt;h4 id=&quot;3-서로-발전하려는-문화&quot;&gt;3) 서로 발전하려는 문화&lt;/h4&gt;
+
+&lt;p&gt;안드로이드 팀의 경우는 매주 금요일에 &lt;code class=&quot;highlighter-rouge&quot;&gt;개수다&lt;/code&gt;라는 것을 진행합니다. 기술적인 것 외에도 팀원들에게 도움이 될만한 내용을 서로 공유하는 시간입니다. 개수다에서 공유된 내용이 실제 쏘카 앱에 적용되어 좀 더 나은 코드를 생성하는 것으로 연결되는 경우도 있습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/join-in-socar-android/gaesuda.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;위의 사진은 실제 안드로이드 팀에서 진행한 개수다 내용이 적혀진 것을 캡쳐한 것입니다. 기술적인 내용 외에도 다양한 내용을 함께 이야기하고 있습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;아쉬웠던-점-1&quot;&gt;아쉬웠던 점&lt;/h3&gt;
+
+&lt;p&gt;안드로이드 팀은 만족스러웠으나 두 가지 아쉬운 점이 있었습니다. 첫째로 팀 내 문서화가 잘되지 않은 것입니다. 둘째로 외부에서 회사의 기술 및 개발 문화를 알 수 없었습니다. 팀 내 문서화의 경우 상대적으로 업무가 적은 제가 많은 내용을 문서화하기 위해 노력 중이며, 외부에 노출하는 것은 현재 기술 블로그를 활성화하는 방향으로 개선하려고 하고 있습니다.&lt;/p&gt;
+
+&lt;p&gt;안드로이드 팀은 좋은 방향으로 성장하기 위해 항상 노력하고 있습니다. 물론 안드로이드 팀뿐만 아니라 쏘카의 모든 팀이 한 발짝 더 나아가기 위해 노력하고 있습니다. 항상 노력하고자 하는 모습도 좋지만, 쏘카에 와서 가장 만족한 것은 좋은 사람들입니다. 지금은 코로나 4단계로 전사 재택근무 중이라 어렵지만, 이전에 회사에 출근해서 얘기하고, 함께 식사하는 시간이 너무나도 즐거웠습니다. 아래의 사진처럼 벚꽃이 이쁘게 핀 날 피크닉 가듯이 식사를 하기도 했습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/join-in-socar-android/lunch-with-company.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;마무리&quot;&gt;마무리&lt;/h2&gt;
+
+&lt;p&gt;이 글은 저의 경험을 서술하는 글이며 이 글을 보시는 많은 분들이 쏘카에 관심 갖고, 쏘카에 입사하셔서 더 많은 분들과 좋은 시간을 보내기를 바라는 약간의 사심이 들어가 있는 글이기도 합니다. 더 많은 사람을 쏘카로 모시고자 안드로이드 팀원들이 저희 팀에 관심있는 분들에게 남기고 싶은 한마디를 작성해보았습니다.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;미뇽 (ENTP): 매주 미뇽의 추천곡을 들으실 수 있습니다.
+로니 (ISFP): 사내 어떤 팀보다 원격 근무에 진심인 사람들. 슬랙콜? ㄴㄴ 디스코드 ㅇㅇ
+아릉 (INTJ): 키보드 만들고 밀링머신 돌리고.. 이상한 사람들 많이 들어왔으면 좋겠습니다.
+지안 (INTP): 미래적인 안드로이드 코딩으로 모빌리티를 함께하실 분을 찾습니다. 그리고... 키보드 좋아하시나요?
+알파카 (INFP): 맛집 좋아하시나요?
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;현재 쏘카 안드로이드 팀은 &lt;strong&gt;주니어, 시니어에 무관하게 채용 중&lt;/strong&gt;입니다. 안드로이드 팀 외에도 쏘카의 채용은 모두 열려있습니다. 카쉐어링 분야와 쏘카에 관심 있고, 수평적 문화 속에서 좋은 사람들과 즐겁게 일할 분을 기다리고 있습니다.&lt;/p&gt;
+&lt;/blockquote&gt;</content><author><name>mignon</name></author><category term="dev" /><category term="android" /><summary type="html">안녕하세요. 소프트웨어 학과를 졸업하고 올해 3월에 입사하여 쏘카 안드로이드 팀에서 일하고 있는 신입 개발자 미뇽(최민정)입니다.</summary></entry><entry><title type="html">쏘카 백오피스 팀 내 공통 코드(Common Code) 관리 변천사</title><link href="https://tech.socarcorp.kr/dev/2021/08/17/common-code-management.html" rel="alternate" type="text/html" title="쏘카 백오피스 팀 내 공통 코드(Common Code) 관리 변천사" /><published>2021-08-17T06:10:00+00:00</published><updated>2021-08-17T06:10:00+00:00</updated><id>https://tech.socarcorp.kr/dev/2021/08/17/common-code-management</id><content type="html" xml:base="https://tech.socarcorp.kr/dev/2021/08/17/common-code-management.html">&lt;p&gt;저희 팀은 쏘카 R&amp;amp;D 본부에서 다양한 백오피스 개발을 담당하고 있습니다. 백오피스 개발에 사용되는 기술 스택은 다음과 같습니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-markdown highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt; Database: MySQL
+&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt; Server Framework: SpringBoot
+&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt; Frontend Framework: Vue.js
+&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt; Language: Kotlin / JavaScript(일부는 TypeScript)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;공통-코드common-code를-어떻게-관리하고-사용할-것인가&quot;&gt;공통 코드(Common Code)를 어떻게 관리하고 사용할 것인가?&lt;/h2&gt;
+
+&lt;p&gt;개발을 하다 보면 상태를 표현하는 값이나 변경 빈도가 낮은 분류(Category) 등을 공통 코드로 관리하게 됩니다.
+프론트엔드(Vue.js)에서 일반적으로 &lt;code class=&quot;highlighter-rouge&quot;&gt;select&lt;/code&gt;나 &lt;code class=&quot;highlighter-rouge&quot;&gt;raido&lt;/code&gt;를 표시할 때 데이터로 사용하고 서버(Kotlin)에서는 비즈니스 로직을 작성할 때 사용하게 되고 DB에도 저장되게 됩니다.&lt;/p&gt;
+
+&lt;p&gt;실제 저희팀에서는 이런 것들을 공통코드로 정의해서 사용하고 있습니다.&lt;/p&gt;
+&lt;div class=&quot;language-markdown highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;p&quot;&gt;*&lt;/span&gt; 정산유형 - 자동 / 수동
+&lt;span class=&quot;p&quot;&gt;*&lt;/span&gt; 정산상태 - 대기중 / 미납 / 완료 / 취소
+&lt;span class=&quot;p&quot;&gt;*&lt;/span&gt; 정산항목 - 대여요금 / 정비요금 / 보증금 / 주유비 / 인수탁송 ....
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;공통코드는 변경 빈도가 높지는 않지만 &lt;code class=&quot;highlighter-rouge&quot;&gt;DB - 서버 - 프론트엔드&lt;/code&gt;에 걸쳐 넓은 범위에서 다양하게 사용되므로 변경이 일어나면 프로젝트를 구성하는 거의 모든 계층이 영향을 받으므로 적절하게 관리하고 사용되어야 합니다.&lt;/p&gt;
+
+&lt;p&gt;이 글에서 저희 팀이 신규 프로젝트를 설계하는 과정에서 공통코드를 관리하기 위해 어떤 시도를 해왔고, 어떻게 보완해 왔는지 정리해 보려고 합니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;들어가기-전에&quot;&gt;들어가기 전에&lt;/h2&gt;
+&lt;p&gt;공통 코드 관리를 어떻게 하면 되느냐? 에 대한 결론부터 말씀드리면 &lt;code class=&quot;highlighter-rouge&quot;&gt;정답은 없다&lt;/code&gt;고 생각합니다.&lt;/p&gt;
+
+&lt;p&gt;비슷한 고민을 하시는 분들에게 저희 팀의 시행착오가 참고될 수 있을까 해서 저희 팀이 공통 코드 처리를 위해 어떤 고민을 하고 어떤 방법으로 불편한 점을 해소했는지를 작성했습니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;1차-공통-코드-구조-설계-및-초기-구현&quot;&gt;(1차) 공통 코드 구조 설계 및 초기 구현&lt;/h2&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/common-code1.png&quot; alt=&quot;공통코드-1차&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;팀에서-결정한-내용&quot;&gt;팀에서 결정한 내용&lt;/h3&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;코드를 어떻게 분류할 것인가?
+    &lt;ul&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;부모 코드-자식 코드&lt;/code&gt;로 분류&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;코드를 어떻게 저장할 것인가?
+    &lt;ul&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;DB&lt;/code&gt;에 &lt;code class=&quot;highlighter-rouge&quot;&gt;부모 코드(code_group) / 자식 코드(code) 2개의 테이블&lt;/code&gt;을 만들어서 저장&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;코드를 어떻게 사용할 것인가?
+    &lt;ul&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;DB&lt;/code&gt;에 저장할 경우 &lt;code class=&quot;highlighter-rouge&quot;&gt;문자열&lt;/code&gt;로 저장&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;Kotlin&lt;/code&gt;에서 사용할 때는 &lt;code class=&quot;highlighter-rouge&quot;&gt;ENUM&lt;/code&gt;을 정의해 두고 사용&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;JavaScript&lt;/code&gt;에서 사용할 때는 서버에서 API로 필요한 코드를 조회해서 사용&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;각 사용처의 코드를 어떻게 Sync 할 것인가?
+    &lt;ul&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;DB&lt;/code&gt; - 기준 데이터&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;서버(Kotlin)&lt;/code&gt; - DB에 입력된 값을 기준으로 ENUM을 생성하는 유틸(&lt;code class=&quot;highlighter-rouge&quot;&gt;codeGenerator&lt;/code&gt;)을 만들어 사용&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;프론트엔드(JavaScript)&lt;/code&gt; - 서버에서 필요한 코드를 DB에서 조회할 수 있는 API를 만들고 필요시 요청해서 사용&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;개발자&lt;/code&gt; - DB에 입력하기 위한 Insert 문을 팀 공통 문서(Notion)에 관리&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;코드의 이름 규칙은 어떻게 할 것인가?
+    &lt;ul&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;부모 코드&lt;/code&gt;는 이름과 함께 &lt;code class=&quot;highlighter-rouge&quot;&gt;5자리의 PREFIX&lt;/code&gt;를 부여&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;자식 코드&lt;/code&gt;는 &lt;code class=&quot;highlighter-rouge&quot;&gt;PREFIX_XXX&lt;/code&gt; 형태의 이름을 사용&lt;/li&gt;
+      &lt;li&gt;대문자 사용&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&quot;결정의-배경&quot;&gt;결정의 배경&lt;/h3&gt;
+&lt;ol&gt;
+  &lt;li&gt;&lt;a href=&quot;https://velog.io/@leejh3224/%EB%B2%88%EC%97%AD-MySQL%EC%9D%98-ENUM-%ED%83%80%EC%9E%85%EC%9D%84-%EC%82%AC%EC%9A%A9%ED%95%98%EC%A7%80-%EB%A7%90%EC%95%84%EC%95%BC-%ED%95%A0-8%EA%B0%80%EC%A7%80-%EC%9D%B4%EC%9C%A0&quot;&gt;MySQL의 ENUM 단점&lt;/a&gt;이 많으니 사용하지 말고 &lt;code class=&quot;highlighter-rouge&quot;&gt;문자열&lt;/code&gt;로 사용합니다.
+    &lt;ul&gt;
+      &lt;li&gt;ENUM의 순서 변경이 있을 경우 테이블이 잠기고, 시간이 데이터의 양에 따라 기하급수적으로 늘어날 수 있습니다.&lt;/li&gt;
+      &lt;li&gt;숫자로 할 경우 DB에서 직접 조회 시 코드의 의미를 추측할 수 없습니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;코딩 시 공통 코드를 문자열로 쓰진 않았으면 했습니다.
+    &lt;ul&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;Kotlin&lt;/code&gt; 쪽은 DB에 있는 공통 코드를 읽어서 &lt;a href=&quot;https://square.github.io/kotlinpoet/&quot;&gt;kotlinpoet&lt;/a&gt;을 활용해서 ENUM 클래스들을 생성하기로 했습니다. (&lt;code class=&quot;highlighter-rouge&quot;&gt;codeGenerator&lt;/code&gt;)&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;javascript&lt;/code&gt; 쪽은 서버에서 코드 조회를 위한 API를 만들어 두고 조회해서 사용합기로 했습니다. 하지만 실제 코드 값을 바로 사용할 때는 값을 바로 문자열로 사용하기로 했습니다.
+        &lt;ul&gt;
+          &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;Javascript&lt;/code&gt;에서도 Kotlin의 ENUM처럼 상수로 선언해 두고 사용하고 싶었으나 신규 프로젝트를 진행하는 과정에서 이루어진 결정이라 Javascript에서 사용성은 일부 포기하였습니다.&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;공통 코드 목록을 구글 시트에 정리해 두는 방법도 고민하였으나 개발 초기에 공통코드가 공유되어야 하는 대상이 개발자뿐이라 그냥 insert 문을 Notion에 붙여두고 관리하기로 했습니다.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&quot;실제-사용-예시&quot;&gt;실제 사용 예시&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;개발자 간 공유를 위한 Insert 쿼리
+    &lt;ul&gt;
+      &lt;li&gt;Notion 문서에 공통 코드를 작성하고, 공통 코드를 변경한 개발자가 직접 해당 SQL을 수정한 후, 팀 내에 코드가 변경된 사실을 공유하는 방식으로 관리합니다&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;o&quot;&gt;#&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;코드&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;그룹&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;생성&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;INTO&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;`code_group`&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;`name`&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;`prefix`&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;`description`&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;VALUES&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;'SETTLEMENT_TYPE'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'STLTP_'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'비용 발생 유형'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;#&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;코드&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;생성&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;INTO&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;`code`&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;`group`&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;`name`&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;`label`&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;`description`&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;`order`&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;VALUES&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;'SETTLEMENT_TYPE'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'STLTP_AUTO'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'자동'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;''&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;'SETTLEMENT_TYPE'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'STLTP_MANUAL'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'수동'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;''&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;생성된 Kotlin ENUM 코드 &lt;a name=&quot;generated_kotlin_code&quot;&gt;&lt;/a&gt;
+    &lt;ul&gt;
+      &lt;li&gt;공통 코드를 변경한 개발자가 generator를 돌려서 kotlin 코드를 생성 후 GIT에 Commit합니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div class=&quot;language-kotlin highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;object&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Codes&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// ... other codes ...&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;enum&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;SettlementType&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kd&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;py&quot;&gt;label&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;py&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;nc&quot;&gt;AUTO&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;자동&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;STLTP_AUTO&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+
+        &lt;span class=&quot;nc&quot;&gt;MANUAL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;수동&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;STLTP_MANUAL&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+        &lt;span class=&quot;k&quot;&gt;companion&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;object&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;fun&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;getByValue&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;SettlementType&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;?&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;values&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;find&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;it&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// ... other codes ...&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Vue.js에서 사용할 경우&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;// 공통 코드 가져오기&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;codes&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;await&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;CodeApi&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;getByGroups&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;SETTLEMENT_TYPE&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]]);&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;// 공통 코드 값 비교&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;type&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;===&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;STLTP_AUTO&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;// 공통 코드 =&amp;gt; 라벨 변환&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;getCodeLabel&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;codes&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;code&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;find&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;codes&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;})&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;find&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;codes&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;label&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;사용-후-발견한-불편한-점&quot;&gt;사용 후 발견한 불편한 점&lt;/h3&gt;
+&lt;ol&gt;
+  &lt;li&gt;공통 코드를 변경할 때마다 신경써야 할 것들이 너무 많습니다.
+    &lt;ul&gt;
+      &lt;li&gt;추가할 코드를 Insert 문으로 작성해 DB에 입력 및 Notion 문서 갱신&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;codeGenerator&lt;/code&gt;를 돌려서 Kotlin 코드 생성&lt;/li&gt;
+      &lt;li&gt;Kotlin 코드를 Git에 commit&lt;/li&gt;
+      &lt;li&gt;코드 변경된 사항을 팀원에게 공유&lt;/li&gt;
+      &lt;li&gt;다른 팀원들은 로컬 DB에 추가된 코드 추가 &amp;amp; Git pull&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;1.&lt;/code&gt;의 절차가 너무 복잡해서 에러를 만나는 경우가 많습니다.
+    &lt;ul&gt;
+      &lt;li&gt;Kotlin ENUM 코드와 로컬 DB의 값이 서로 달라서 에러 발생.
+        &lt;ul&gt;
+          &lt;li&gt;A 개발자가 공통 코드 변경이 필요한 개발 건을 진행하고 그 코드가 머지된 이후 다른 B 개발자가 pull을 받은 후, 이어서 다른 개발을 진행하려고 할 때 로컬 DB에는 아직 신규 코드가 추가 되지 않아 매번 에러를 경험하게 됩니다. 이 때 B 개발자는 Notion에 있는 변경된 Insert 쿼리를 로컬 DB에 실행해야 하는데, 이 과정이 번거롭게 느껴졌습니다.&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;JavaScript 공통코드 값 비교&lt;/code&gt; 할 때 문자열로 사용하는 것이 꺼림칙합니다.
+    &lt;ul&gt;
+      &lt;li&gt;코드 컨벤션을 깔끔하게 유지하고 싶어 하는 팀원들이 많기도 하고, 코딩할 때 해당 코드의 실제 값을 DB나 Kotlin 코드에서 찾아 복사해야 하는 것이 불편합니다.&lt;/li&gt;
+      &lt;li&gt;또한 복사하지 않고 직접 타이핑시 오타로 인한 버그도 발생할 수 있었습니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;JavaScript에서 필요할 때마다 코드를 API로 가져오는데, 너무 자주 필요합니다(코드 조회를 위한 API 요청이 너무 많습니다)
+    &lt;ul&gt;
+      &lt;li&gt;백오피스 서버 / 프론트엔드를 모두 팀에서 개발하는데 나눠서 해야 하나요?&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;2차-불편함-개선-작업db를-빼버리자&quot;&gt;(2차) 불편함 개선 작업(DB를 빼버리자!)&lt;/h2&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/common-code2.png&quot; alt=&quot;공통코드-2차&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;공통-코드를-변경할-때마다-db와-코드를-sync-시키는-작업을-없애봅시다&quot;&gt;공통 코드를 변경할 때마다 DB와 코드를 Sync 시키는 작업을 없애봅시다&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;DB에서 직접 데이터를 확인할 때 공통 코드 테이블을 join해서 &lt;code class=&quot;highlighter-rouge&quot;&gt;공통 코드 -&amp;gt; 라벨&lt;/code&gt;로 변경해서 쿼리하는 경우가 생각보다 없었습니다.&lt;/li&gt;
+  &lt;li&gt;위 케이스를 제외하면 DB를 사용하는 것은 프론트엔드를 위해 서버에서 API로 코드를 내려줄 때 DB를 조회해서 내리는 곳밖에 없었습니다.&lt;/li&gt;
+  &lt;li&gt;그렇다면! DB에서 코드 테이블을 삭제해버리고 &lt;code class=&quot;highlighter-rouge&quot;&gt;codeGenerator로 DB에서 생성한 Kotlin code&lt;/code&gt;를 메인 데이터로 사용하는 방법을 시도해 볼 수 있을 거 같았습니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;코드-조회-api를-db-없이-어떻게-만들면-될까요&quot;&gt;코드 조회 API를 DB 없이 어떻게 만들면 될까요?&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;Kotlin 코드를 &lt;code class=&quot;highlighter-rouge&quot;&gt;reflection&lt;/code&gt; 해서 필요한 코드를 추출해서 기존 DB에서 조회해서 반환하던 response와 동일한 값을 내려줍니다.
+    &lt;ul&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;실제 사용 예시&lt;/code&gt;에 있는 &lt;code class=&quot;highlighter-rouge&quot;&gt;object Codes {}&lt;/code&gt;에 확장함수(&lt;code class=&quot;highlighter-rouge&quot;&gt;getCodes&lt;/code&gt;)를 하나 붙여줍니다.&lt;/li&gt;
+      &lt;li&gt;대/소문자나 camelCase / snake_case 변환이 필요한 부분은 &lt;a href=&quot;https://github.com/google/guava&quot;&gt;google guava&lt;/a&gt;의 &lt;code class=&quot;highlighter-rouge&quot;&gt;CaseFormat&lt;/code&gt;을 활용했습니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;코드 예시(&lt;code class=&quot;highlighter-rouge&quot;&gt;GitHub Gist&lt;/code&gt;): &lt;strong&gt;&lt;a href=&quot;https://gist.github.com/socar-dorma/161c58fda3b848184c62ae287ca59e4b&quot;&gt;&lt;u&gt;reflection을 이용한 공통 코드 조회&lt;/u&gt;&lt;/a&gt;&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;해소된-문제&quot;&gt;해소된 문제&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;이제 공통 코드를 DB에 넣지 않아도 되고, Notion에 Insert 쿼리를 관리하지 않아도 됩니다.&lt;/li&gt;
+  &lt;li&gt;공통 코드를 변경한 사실을 팀 내에 따로 전파하지 않아도 Git pull만 받으면 됩니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;3차-javascript에서-사용할-코드-생성&quot;&gt;(3차) JavaScript에서 사용할 코드 생성&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;덧. 글이 너무 길어질 것 같아 &lt;code class=&quot;highlighter-rouge&quot;&gt;Gradle Plugin 만드는 방법 및 사용 방법&lt;/code&gt;은 생략된 부분이 많습니다. 대략적인 작업 흐름을 알 수 있는 정도로 작성하였습니다.&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/common-code3.png&quot; alt=&quot;공통코드-3차&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;db가-사라졌으니-kotlin-코드를-분석해서-javascript-코드를-생성해-봅시다&quot;&gt;DB가 사라졌으니 Kotlin 코드를 분석해서 JavaScript 코드를 생성해 봅시다.&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;팀 내에 프로젝트가 한 개가 아니니 여러 프로젝트에서 공통으로 쓸 수 있었으면 합니다.&lt;/li&gt;
+  &lt;li&gt;Gradle Plugin 형태로 만들어서 각 프로젝트에서 사용하고자 합니다.&lt;/li&gt;
+  &lt;li&gt;Gradle Plugin에서 프로젝트에 있는 Kotlin 파일에 접근하려니 reflection으로 접근하기가 애매합니다.&lt;/li&gt;
+  &lt;li&gt;Gradle Plugin이 실행되는 시점에 프로젝트 코드를 &lt;code class=&quot;highlighter-rouge&quot;&gt;import&lt;/code&gt; 하거나 할 수는 없으니 Gradle Plugin 입장에선 공통코드가 선언된 파일의 경로를 입력받고 파일을 열어서 Kotlin 코드를 파싱해서 쓸 수밖에 없습니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;kotlin-코드를-파싱해서-javascript에서-사용할-공통코드-생성하는-gradle-plugin을-만듭니다&quot;&gt;Kotlin 코드를 파싱해서 JavaScript에서 사용할 공통코드 생성하는 Gradle Plugin을 만듭니다.&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;reflection은 이미 class가 로딩된 이후에 &lt;a href=&quot;https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.reflect/-k-class/&quot;&gt;Kotlin의 KClass&lt;/a&gt;나 &lt;a href=&quot;https://docs.oracle.com/javase/8/docs/api/java/lang/Class.html&quot;&gt;Java의 Class&lt;/a&gt;를 사용하지만 Kotlin PSI의 경우는 전혀 다른 클래스들을 활용하고 별도의 dependency도 필요합니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;implementation&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;org.jetbrains.kotlin:kotlin-compiler:1.5.0&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;implementation&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;org.jetbrains.kotlin:kotlin-compiler-embeddable:1.5.0&quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;#generated_kotlin_code&quot;&gt;(이제 직접 수정하고 있는) 생성된 Kotlin ENUM 코드&lt;/a&gt;에 있는 Kotlin Code를 파싱하는 코드의 대략적인 구조입니다. (&lt;strong&gt;실제 실행되는 코드에서 일부를 발췌한 코드라 바로 실행은 안 됩니다&lt;/strong&gt;)
+    &lt;ul&gt;
+      &lt;li&gt;JavaScript / TypeScript 코드 생성은 문법에 맞게 문자열을 생성 후 파일로 저장했습니다.&lt;/li&gt;
+      &lt;li&gt;코드 예시(&lt;code class=&quot;highlighter-rouge&quot;&gt;GitHub Gist&lt;/code&gt;): &lt;strong&gt;&lt;a href=&quot;https://gist.github.com/socar-dorma/306453fafc0383869f62adf31cfaba0c&quot;&gt;&lt;u&gt;Kotlin PSI로 공통코드 파싱하기&lt;/u&gt;&lt;/a&gt;&lt;/strong&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;만들어진-gradle-plugin의-동작-방식&quot;&gt;만들어진 Gradle Plugin의 동작 방식&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;Gradle Plugin을 적용하고 아래 설정을 추가하면 Gradle Task(&lt;code class=&quot;highlighter-rouge&quot;&gt;generate&amp;lt;설정 이름(아래 설정 기준 management)&amp;gt;Code&lt;/code&gt; 유형의 이름으로 생성됨)가 자동으로 추가됩니다.
+    &lt;ul&gt;
+      &lt;li&gt;각 프로젝트의 &lt;a href=&quot;#generated_kotlin_code&quot;&gt;(이제 직접 수정하고 있는) 생성된 Kotlin Enum 코드&lt;/a&gt;의 절대 경로와 JavaScript 파일을 생성할 절대 경로를 전달합니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;codeJavascriptGenerator&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;management&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;codeFile&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;${project.rootDir}/subprojects/core/src/main/kotlin/kr/socar/plan/Codes.kt&quot;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;outDir&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;${project.rootDir}/subprojects/frontend/management/src/api&quot;&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;공통 코드가 수정되면 &lt;code class=&quot;highlighter-rouge&quot;&gt;./gradlew :&amp;lt;project&amp;gt;:generateManagementCode&lt;/code&gt;를 실행해 주면 JavaScript에서 사용할 공통 코드 파일이 생성(갱신)됩니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;생성된-typescript-코드&quot;&gt;생성된 &lt;code class=&quot;highlighter-rouge&quot;&gt;TypeScript&lt;/code&gt; 코드&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;Kotlin에서 &lt;code class=&quot;highlighter-rouge&quot;&gt;Codes object&lt;/code&gt;를 사용하는 것과 최대한 동일하게 사용할 수 있도록 코드를 생성했습니다.&lt;/li&gt;
+  &lt;li&gt;코드 예시(&lt;code class=&quot;highlighter-rouge&quot;&gt;GitHub Gist&lt;/code&gt;): &lt;strong&gt;&lt;a href=&quot;https://gist.github.com/socar-dorma/a0f2c79be7ffc2cff556c02be80500f0&quot;&gt;&lt;u&gt;생성된 codes.ts 파일&lt;/u&gt;&lt;/a&gt;&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;javascripttypescript에서-생성된-공통-코드-사용법&quot;&gt;JavaScript(TypeScript)에서 생성된 공통 코드 사용법&lt;/h3&gt;
+
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;// 공통 코드 가져오기&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;Codes&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;`/codes`&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;// 공통 코드 값 비교&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;type&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;===&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;Codes&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;settlementType&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;AUTO&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;// 공통 코드 =&amp;gt; 라벨 변환&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;STLTP_AUTO&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;label&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;find&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;Codes&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;settlementType&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;values&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;label&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;마무리하며&quot;&gt;마무리하며&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;공통 코드는 &lt;code class=&quot;highlighter-rouge&quot;&gt;DB - 서버 - 프론트엔드&lt;/code&gt; 모든 계층에서 폭넓게 사용되며 추가나 수정이 필요한 경우도 많기 때문에 적절하게 관리하고 사용하지 않으면 유지보수나 기능을 추가할 때 큰 문제가 되기도 합니다. 그러므로 공통코드는 각 계층에서 사용하는 프로그래밍 언어 각각에서 상수로 정의해서 사용해야 하고 각 계층 간에 동기화도 쉬워야 한다고 생각합니다.&lt;/li&gt;
+  &lt;li&gt;서두에 적었듯이 &lt;code class=&quot;highlighter-rouge&quot;&gt;공통 코드 관리 방법에 정답은 없다&lt;/code&gt;고 생각합니다(저희 팀도 추가 수정을 할 수도 있습니다)&lt;/li&gt;
+  &lt;li&gt;저희 팀은 이런 과정을 거쳐서 이렇게 사용하고 있다는 경험을 공유해 드리는 것뿐 당연히 이 방법도 정답은 아닙니다.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;DB - 서버 - 프론트엔드&lt;/code&gt;에 걸쳐서 공통코드를 어떤 식으로 관리할지 고민하시는 분들에게 참고가 되었으면 좋겠습니다.&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;Gradle Plugin 만드는 과정&lt;/code&gt;은 이 글 주제에서는 중요도가 낮다고 생각되어서 대략적인 내용만 적었습니다.&lt;/li&gt;
+&lt;/ul&gt;</content><author><name>dorma</name></author><category term="dev" /><category term="공통코드관리" /><summary type="html">저희 팀은 쏘카 R&amp;amp;D 본부에서 다양한 백오피스 개발을 담당하고 있습니다. 백오피스 개발에 사용되는 기술 스택은 다음과 같습니다.</summary></entry><entry><title type="html">자동차 배터리를 더 소중하게 공학적으로 관리하기 #1</title><link href="https://tech.socarcorp.kr/mobility/2021/07/20/socar-mobility-lab-battery-management-process-first-stage.html" rel="alternate" type="text/html" title="자동차 배터리를 더 소중하게 공학적으로 관리하기 #1" /><published>2021-07-20T00:00:00+00:00</published><updated>2021-07-20T00:00:00+00:00</updated><id>https://tech.socarcorp.kr/mobility/2021/07/20/socar-mobility-lab-battery-management-process-first-stage</id><content type="html" xml:base="https://tech.socarcorp.kr/mobility/2021/07/20/socar-mobility-lab-battery-management-process-first-stage.html">&lt;p&gt;안녕하세요. 쏘카 모빌리티Lab의 Charlie(하철수) 입니다.  이번 글에서는 10,000대가 넘는 차량을 운영하는 쏘카에서 차량 관리에 어떤 기술을 어떻게 적용하고 있는지 공유하고자 합니다.&lt;/p&gt;
+
+&lt;p&gt;(본 글에서 다루는 내용은 공학적으로 다소 전문적인 내용을 포함하고 있고, 현업에서 자동차를 관리하는 분들께 맞추어 작성했습니다. 읽으시는 도중 문의 사항이 있으면 댓글을 남겨주세요. 최대한 잘 설명드리도록 하겠습니다)&lt;/p&gt;
+
+&lt;p&gt;휘발유나 경유를 넣고 엔진(내연기관)을 돌려 구동하는 자동차는 우리가 아직 가장 쉽게 접할 수 있는 자동차이자 탈것입니다. 1885년 벤츠의 가솔린 기관 자동차가 처음 세상에 나온 이래로 자동차의 발전 역사가 공학발전의 역사였고, 자연스럽게 자동차는 각 시대를 대표하는 기술이 모이는 하나의 플랫폼이 되었습니다. 조금 더 설명해 드리면,  유체역학,  물리학,  구조역학(기계공학에서 총괄함)을 기본으로 유기화학(철강,  유리,  자동차 시트, 부품, 고무 제품과 연관되며 화학공학에서 총괄함), 전기공학(센서, 카메라), 전자기학의 집합체가 자동차입니다. 결국, 자동차를 제대로 관리하기 위해선 역학적 요소에 대한 이해가 필요합니다.&lt;/p&gt;
+
+&lt;p&gt;모빌리티Lab을 대표하여 처음으로 다룰 주제는 기술 집합체인 자동차의 구동 시작을 담당하는 &lt;strong&gt;자동차 배터리 관리&lt;/strong&gt;에 관한 이야기입니다. 경차에서 슈퍼카에 이르기까지 모든 내연기관 자동차는 시동을 걸어야 탈 것의 기능을 할 수 있습니다.  자동차에 장착된 시동용 배터리는 시동모터를 돌려 엔진을 구동시키는 역할을 합니다.  그런데 이 배터리가 대단히 예민합니다. 사람처럼 추우면 힘을 못 내고, 더우면 빨리 지치며, 제때 밥을 먹여주지 않으면 몸이 곯아버립니다. 10,000대가 넘는 차량을 운영하는 쏘카 입장에서는 하나하나 살펴볼 수도 없고, 관리하기 여간 어려운 게 아닙니다.&lt;/p&gt;
+
+&lt;p&gt;그래도 공학자는 문제를 풀어내야 진짜 공학자입니다! 지금부터 쏘카 모빌리티Lab에서 어떻게 이 문제를 풀어가는지 최대한 쉽게 나누려고 합니다.&lt;/p&gt;
+
+&lt;h2 id=&quot;목차&quot;&gt;목차&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;#배터리-종합-관리&quot;&gt;배터리 종합 관리&lt;/a&gt;
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href=&quot;#1-배경&quot;&gt;배경&lt;/a&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;#2-문제-정의&quot;&gt;문제 정의&lt;/a&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;#3-문제-해결을-위한-접근-방법&quot;&gt;문제 해결을 위한 접근 방법&lt;/a&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#맺으며&quot;&gt;맺으며&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;1-배경&quot;&gt;1. 배경&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;방전과 관련된 문제는 월 100건 이상 접수됩니다. 어떤 경로로 접수되어 수리를 받는가에 따라 다르지만 준중형차량(대표적으로 아반떼) 기준 수리비가 25만원까지 청구되기도 합니다. &lt;strong&gt;방전 문제는 회사의 관리 손실을 일으키는 중요 요소입니다.&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;개인이 관리하는 일반적인 차량의 경우 3년간 600~800회의 시동 시도가 기록되고 배터리 제조사의 보증 시동 횟수도 600~800회 정도입니다. 그러나 쏘카가 운영하는 차량은 연간 2,200~2,800회 정도의 시동 시도가 발생합니다. 특히 2,200회를 넘어가는 시점에서는 배터리 관련 고장으로 인해 공업사에 차량이 입고될 확률이 급격히 높아집니다. 그러므로 &lt;strong&gt;이 시기가 도래하기 전에 적절한 관리를 통해 배터리의 수명을 관리해주어야 합니다.&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/socar-mobility-lab-battery-management-process-first-stage/Figure-1.png&quot; alt=&quot;&quot; /&gt;
+&lt;em&gt;[그림 1] 시동 사이클 증가에 따른 장애 건수 분포&lt;/em&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;정상적인 배터리가 일부 고객의 특이적인 배터리 사용 방법에 따라 방전되는 경우도 있습니다. 통계적으로 실제 방전 신고의 60%는 현 고객 혹은 직전 고객의 특이적 배터리 사용 방법으로 인해 발생했습니다 .&lt;/li&gt;
+  &lt;li&gt;차량에서 받을 수 있는 배터리 상태 데이터 종류에 한계가 있습니다. 별도의 데이터 수집 장치가 없다면 시간, 전압, 시동 상태 외에 차량에서 받을 수 있는 배터리 관련 데이터는 없습니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;2-문제-정의&quot;&gt;2. 문제 정의&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;쏘카 차량의 &lt;strong&gt;배터리 방전 문제로 인한 관리 손실&lt;/strong&gt;이 있습니다.&lt;/li&gt;
+  &lt;li&gt;쏘카 차량의 &lt;strong&gt;배터리를 배터리의 특성과 상태 기준으로 관리하는 로직&lt;/strong&gt;이 없습니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;3-문제-해결을-위한-접근-방법&quot;&gt;3. 문제 해결을 위한 접근 방법&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;수년간 누적된 데이터 중 현재도 수집이 되는 Feature에 대한 분석작업부터 시작합니다. (현재 수집이 가능한 Feature를 사용해야 과거 데이터를 통해 만들어진 모델을 앞으로도 활용할 수 있습니다)
+    &lt;ul&gt;
+      &lt;li&gt;물리적 정보: 전압, 신호 미수신 시간, 차량별 생애 주기 동안 시동 횟수&lt;/li&gt;
+      &lt;li&gt;과거 운영 데이터: 실제 배터리 문제로 신고 접수된 건수 기록&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;배터리 관리 방법에 변화를 주었습니다.
+    &lt;ul&gt;
+      &lt;li&gt;고객 신고가 들어오면 점프 혹은 배터리 교환을 했던 기존 프로세스를 &lt;strong&gt;배터리 상태를 바탕으로 한 프로세스&lt;/strong&gt;로 바꾸었습니다.
+        &lt;ul&gt;
+          &lt;li&gt;배터리 상태가 어느 정도 보존된 상태의 방전 초입의 배터리는 물리 화학적 관리를 거치면 배터리 수명이 연장되어 교체하지 않아도 좀 더 사용할 수 있습니다.&lt;/li&gt;
+        &lt;/ul&gt;
+
+        &lt;p&gt;&lt;img src=&quot;/img/socar-mobility-lab-battery-management-process-first-stage/Figure0_KOR.jpg&quot; alt=&quot;&quot; /&gt;
+  &lt;em&gt;[그림 2] 배터리 Reconditioning 장치와 배터리&lt;/em&gt;&lt;/p&gt;
+
+        &lt;ul&gt;
+          &lt;li&gt;방전 초입을 어떻게 잡아내는가에 따라 관리 가능 여부가 갈립니다.&lt;/li&gt;
+          &lt;li&gt;방전 초입을 포착해도 이동, 횟수, 배터리 관리, 재장착 과정을 거치면서 발생하는 추가 관리 비용이 필요합니다. 따라서 선제적 관리가 기존 관리 방법보다 사업 및 운영상의 이득을 보장하는 영역을 찾아내는 알고리즘이 필요합니다.&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;개발 당시 누적 데이터를 기준으로 배터리 방전 여부를 판단하는 알고리즘을 고안했습니다.
+        &lt;ul&gt;
+          &lt;li&gt;예약 직전의 모든 배터리 전압(V)과 단말 신호주기(dt)를 추출하여 배터리 방전 신고 확률을 구합니다. 이때, 신고가 올 확률이 임계 확률보다 높아지면 사전 정비를 통해 이득을 얻을 수 있습니다. &lt;strong&gt;이 임계 확률 구하기가 결국 과제의 중요 목표 중 하나&lt;/strong&gt;입니다.&lt;/li&gt;
+          &lt;li&gt;연구 과정을 순서대로 나타내면 아래와 같습니다.
+            &lt;ul&gt;
+              &lt;li&gt;모든 예약 내역 데이터를 추출합니다.&lt;/li&gt;
+              &lt;li&gt;예약 점유 시간 동안 배터리 관련 신고가 없고, 시동이 한번이라도 켜진 예약 리스트를 추출합니다.&lt;/li&gt;
+              &lt;li&gt;예약 점유 시간 동안 배터리 관련 신고가 있는 예약 리스트 추출합니다.&lt;/li&gt;
+              &lt;li&gt;위의 두 리스트의 배터리 전압과, 신호가 들어오지 않는 시간 간격을 추출합니다.&lt;/li&gt;
+            &lt;/ul&gt;
+
+            &lt;p&gt;&lt;img src=&quot;/img/socar-mobility-lab-battery-management-process-first-stage/Figure1_KOR.png&quot; alt=&quot;&quot; /&gt;
+  &lt;em&gt;[그림 3] 정상적인 배터리 운용 케이스와 문제가 생긴 케이스의 구분&lt;/em&gt;&lt;/p&gt;
+
+            &lt;ul&gt;
+              &lt;li&gt;DB 조회를 통해 배터리 관련 총 신고 건수, 배터리 관련 긴급출동 데이터, 정비 비용, 관리 중 발생하는 이동 거리에 기반한 물류비를 모두 반영한 기준을 수립합니다.&lt;/li&gt;
+              &lt;li&gt;
+                &lt;p&gt;위의 그림 3 기준을 따라 배터리 신고가 들어오는 비율을 2D Contour로 나타내었습니다. (그림 4)
+  &lt;img src=&quot;/img/socar-mobility-lab-battery-management-process-first-stage/Figure2.png&quot; alt=&quot;&quot; /&gt;
+  &lt;em&gt;[그림 4] 배터리 신고가 들어오는 비율에 대한 2D Contour&lt;/em&gt;&lt;/p&gt;
+              &lt;/li&gt;
+              &lt;li&gt;서울 경인과 그 외 지역의 관리 비용 차이로 인해 Contour가 조금 달라질 수 있어서 아래와 같이 분리해서 추출했고, 정상 배터리 전압영역 (12.4V) 이하를 이상 영역으로 명확히 보면 아래와 같습니다. 위의 Contour와 다르게 아래는 확률 분포가 무시된 Binary Contour입니다. (그림 5, 6)
+  &lt;img src=&quot;/img/socar-mobility-lab-battery-management-process-first-stage/Figure3.png&quot; alt=&quot;&quot; /&gt;
+  &lt;em&gt;[그림 5] 서울, 경인 지역 Binary Contour&lt;/em&gt;&lt;/li&gt;
+            &lt;/ul&gt;
+
+            &lt;p&gt;&lt;img src=&quot;/img/socar-mobility-lab-battery-management-process-first-stage/Figure4.png&quot; alt=&quot;&quot; /&gt;
+  &lt;em&gt;[그림 6] 기타 지역 Binary Contour&lt;/em&gt;&lt;/p&gt;
+
+            &lt;ul&gt;
+              &lt;li&gt;
+                &lt;p&gt;Binary Contour는 아래의 수식(그림 7)을 기초로 하며, 운영 데이터를 통해 구해진 합리적 수치보다 Precision이 큰 영역을 Highlight 하여 만들어집니다.
+  &lt;img src=&quot;/img/socar-mobility-lab-battery-management-process-first-stage/Figure5.png&quot; alt=&quot;&quot; /&gt;
+  &lt;em&gt;[그림 7] Binary Contour의 계산에 사용된 수식&lt;/em&gt;&lt;/p&gt;
+              &lt;/li&gt;
+              &lt;li&gt;
+                &lt;p&gt;샘플로 추출된 특정 기간 동안 데이터를 바탕으로 Confusion Matrix를 계산하면 아래와 같습니다. 단, 113대 중 일부는 과잉정비가 아닐 수 있고 그 값을 정확히 알 수 없어 미지수인 alpha로 두었습니다.
+  &lt;img src=&quot;/img/socar-mobility-lab-battery-management-process-first-stage/Figure6_KOR.png&quot; alt=&quot;&quot; /&gt;
+  &lt;em&gt;[그림 8] Confusion Matrix&lt;/em&gt;&lt;/p&gt;
+              &lt;/li&gt;
+              &lt;li&gt;
+                &lt;p&gt;Contour를 바탕으로 실시간으로 차량 상태를 조회하여 전압과 dt가 Contour에 올라온다면 방전으로 판단하고 적절하게 조처합니다.&lt;/p&gt;
+              &lt;/li&gt;
+            &lt;/ul&gt;
+          &lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;
+        &lt;p&gt;다음은 방전 의심 차량의 배터리를 관리하는 방법중 하나인 &lt;strong&gt;전기 화학적 관리 방법&lt;/strong&gt;을 소개합니다.&lt;/p&gt;
+
+        &lt;ul&gt;
+          &lt;li&gt;자동차 시동용 배터리란?
+            &lt;ul&gt;
+              &lt;li&gt;종류: 이차전지&lt;/li&gt;
+              &lt;li&gt;사용처: 자동차 시동용 배터리나 지게차 배터리&lt;/li&gt;
+              &lt;li&gt;구성:
+                &lt;ul&gt;
+                  &lt;li&gt;음극판: 완전히 충전된 상태에서 음극판은 완전한 납&lt;/li&gt;
+                  &lt;li&gt;양극판: 이산화 납&lt;/li&gt;
+                  &lt;li&gt;전해액: 화학적 에너지를 가득 품은 고농도의 황산&lt;/li&gt;
+                &lt;/ul&gt;
+              &lt;/li&gt;
+              &lt;li&gt;화학반응의 흐름:
+                &lt;ul&gt;
+                  &lt;li&gt;시간이 지남에 따라 음극판이 고농도의 황산과 반응하여 황산납과 2개의 전자를 방출합니다.&lt;/li&gt;
+                  &lt;li&gt;이 전자들이 도선을 따라 흐르다가 양극에 만나면 환원 반응을 하게 됩니다.&lt;/li&gt;
+                  &lt;li&gt;화학반응 중 에너지가 발생합니다.&lt;/li&gt;
+                &lt;/ul&gt;
+              &lt;/li&gt;
+              &lt;li&gt;특성:
+                &lt;ul&gt;
+                  &lt;li&gt;자동차 시동용 납축전지는 일시에 과대 전류를 뿜어내는데 최적화되어있어서 완전 충전 후 일시에 큰 전류를 소량 사용(임펄스 전류), 이후에는 바로 완전충전해 사용하는 방식에 최적화되어있습니다.&lt;/li&gt;
+                  &lt;li&gt;그러므로 충전하지 않고 전지를 계속 사용하면 쉽게 고장납니다.
+                    &lt;ul&gt;
+                      &lt;li&gt;용량의 50%를 사용하고 일주일을 충전하지 않으면 후에 충전한다 하더라도 &lt;strong&gt;이미 사용한 50%에 대한 회복은 불가능&lt;/strong&gt;합니다.&lt;/li&gt;
+                      &lt;li&gt;따라서 시동용 납축전지를 보통의 충전지처럼 사용하면 &lt;strong&gt;수 회 사용으로 완전히 고장&lt;/strong&gt;납니다.&lt;/li&gt;
+                      &lt;li&gt;자동차 시동용 배터리로 가장 널리 사용되는 밀폐형 혹은 무보수형(MF)으로 불리는 납축전지의 경우 정상적 사용조건 아래에서 3년 500회의 시동횟수를 커버 가능합니다.&lt;/li&gt;
+                      &lt;li&gt;그 이상 사용하기 어려운 이유는 시간이 지남에 따라 자연적 화학반응에 의해 음극판에도 황화납이 침착되어 이온 교환이 원활하게 이루어지기 어렵기 때문입니다.&lt;/li&gt;
+                      &lt;li&gt;평소 충전을 자주 해주어 전류를 일정 수준 이하로 떨어지지 않게 유지하면 오래 쓸 수 있으나, 반대로 너무 오래 방전을 해서 한 번이라도 충전 한계 전압 이하로 떨어지게 되면(심방전이라고 함) 그땐 이미 극판에 황화납 피막이 두껍게 형성된 상태라 재충전이 거의 안되며 배터리를 폐기해야 합니다.&lt;/li&gt;
+                    &lt;/ul&gt;
+                  &lt;/li&gt;
+                  &lt;li&gt;온도 변화에 성능 변화가 크게 좌우되는 특성이 있습니다.
+                    &lt;ul&gt;
+                      &lt;li&gt;섭씨 0도의 배터리는 섭씨 25도의 배터리의 63% 성능만을 발휘하는데 섭씨 0도에서 엔진이 시동을 위해 필요로 하는 외력은 섭씨 25도의 엔진이 요구하는 &lt;strong&gt;외력의 165%&lt;/strong&gt;에 육박합니다.&lt;/li&gt;
+                      &lt;li&gt;따라서 납산 전지를 시동용으로 사용하는 자동차는 &lt;strong&gt;겨울철에 시동이 잘 걸리지 않는 고질적 문제&lt;/strong&gt;를 가집니다.&lt;/li&gt;
+                    &lt;/ul&gt;
+                  &lt;/li&gt;
+                &lt;/ul&gt;
+              &lt;/li&gt;
+              &lt;li&gt;심방전 관련 추가 설명:
+                &lt;ul&gt;
+                  &lt;li&gt;&lt;strong&gt;심방전이 일어나면 극판에 황화납 피막이 높은 수준으로 형성&lt;/strong&gt;됩니다.&lt;/li&gt;
+                  &lt;li&gt;초기 심방전이나, 심방전의 횟수가 2회 미만인 배터리의 경우 고주파 펄스 형태로 전류를 배터리에 보내면 극판에 진동을 일으켜 &lt;strong&gt;황화납을 어느정도 탈각&lt;/strong&gt;시킬 수 있습니다.&lt;/li&gt;
+                  &lt;li&gt;초기 심방전이나, 심방전으로 이를 가능성이 매우 높은 배터리를 &lt;strong&gt;조기에 발견하여 조치하면 배터리의 수명연장이 어느 정도 가능&lt;/strong&gt;합니다.&lt;/li&gt;
+                  &lt;li&gt;혹은 배터리에 대한 이해가 높고 충분한 장비가 있다면 배터리의 극판의 황화납을 물리적으로 탈각시키는 방법을 시도하여 배터리 수명을 유지할 수 있습니다.&lt;/li&gt;
+                  &lt;li&gt;배터리 수명 연장을 위한 황화납의 탈각 방법을 통칭하여 &lt;strong&gt;Reconditioning(재건조화)&lt;/strong&gt;라고 합니다.&lt;/li&gt;
+                &lt;/ul&gt;
+              &lt;/li&gt;
+            &lt;/ul&gt;
+          &lt;/li&gt;
+          &lt;li&gt;실제 관리 POC의 진행
+            &lt;ul&gt;
+              &lt;li&gt;&lt;strong&gt;초기 FS ~ 1차 POC 기간 간 직접 Reconditioning을 수행&lt;/strong&gt;했습니다.
+                &lt;ul&gt;
+                  &lt;li&gt;전국단위의 FS 및 1차 POC를 수행하려면 전국에 본사의 LAB 환경과 동일한 관리 시설을 두어야 합니다. 초기 검증 기간에 전국 인프라 구축은 현실적으로 어렵기 때문에 LAB에서 커버 가능한 서울과 그 주변 도시들을 타깃으로 했습니다.&lt;/li&gt;
+                  &lt;li&gt;위에서 설명한 배터리 관리 필요 대상 차량을 자동으로 추출하는 시스템에서 서울 경기 차량 중 관리가 필요한 차량을 일~목 동안 선정하여 Reconditioning을 수행했습니다.&lt;/li&gt;
+                  &lt;li&gt;&lt;strong&gt;초기 방전 및 AGM배터리의 경우 90% 이상의 회복&lt;/strong&gt;을 보여주었습니다(Reconditioning 이후 6개월 이상 재인입이 없는 차량 기준). 그러나 &lt;strong&gt;심방전이 지속된 차량의 배터리나 일반 MF형 배터리의 경우 30% 대의 회복&lt;/strong&gt;을 보여주어서 조기 발견 및 대응이 중요함을 확인했습니다.&lt;/li&gt;
+                  &lt;li&gt;이 프로세스가 쏘카의 차량 대다수에 가장 널리 사용되는 &lt;strong&gt;AGM 배터리의 Reconditioning에 잘 맞고 이익을 줄 수 있음을 확인&lt;/strong&gt;했습니다. 경형 차량에 주로 사용되는 MF형 배터리는 시중에 판매되는 Reconditioning 장비로 황산납 탈각이 잘 안 됨을 보았습니다. MF형 배터리에 대해 Reconditioning 기술을 보유하고 있는 소수의 기업이 있으며 그중 일부 기업은 합리적인 가격으로 서비스를 제공합니다.&lt;/li&gt;
+                  &lt;li&gt;배터리 문제로 인해 신고가 들어온 차량의 60%는 고객의 차량 사용 미숙이 주된 원인이었습니다. 고객께서 차량 사용에 문제가 없도록 가이드를 잘한다면 방전의 60%를 해결 가능하다는 말로도 이해가 가능한 부분입니다. 따라서 배터리 방전을 일으키기 쉬운 상황이 감지되면 고객님께 적절한 알림을 드리는 시스템을 구축하기로 했습니다.&lt;/li&gt;
+                &lt;/ul&gt;
+              &lt;/li&gt;
+              &lt;li&gt;2차 POC 혹은 전면 도입 기간에 대량 관리를 위한 Reconditioning 및 관리 시스템을 구축했습니다.&lt;/li&gt;
+            &lt;/ul&gt;
+          &lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;맺으며&quot;&gt;맺으며&lt;/h2&gt;
+
+&lt;p&gt;이번에 소개드린 쏘카의 배터리 관리 프로세스는 &lt;strong&gt;데이터와 기존의 공학적 지식이 결합되어 어떤 솔루션을 줄 수 있는지 보여주는 좋은 예시&lt;/strong&gt;라고 생각합니다. 여기서 소개했던 배터리 관리 프로세스 이외에도 현재 쏘카에서는 운영상 발생하는 다양한 문제에 대해 데이터와 공학적 지식을 결합하여 좋은 솔루션을 도출하고, 그 솔루션을 기반으로 운영 문제를 해결하는 시도를 하고 있습니다. 앞으로도 다양한 사례들에 대해 하나씩 이야기를 풀어 나가려고 하니 기대해주세요.
+그럼 저는 이만 인사드리며 글을 마치도록 하겠습니다.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;strong&gt;쏘카의 모빌리티Lab&lt;/strong&gt;은 모두 높은 수준의 기계 공학 지식을 보유한 인력으로 이루어졌으며, 쏘카의 풍부한 차량 데이터에 기계 공학 지식을 녹여 운영에 필요한 최적 솔루션을 만들고 있습니다.  우리에게 힘을 더해주실 우수한 분을 모시고 있습니다. 언제든지 지원해주세요.&lt;/p&gt;
+&lt;/blockquote&gt;</content><author><name>charlie</name></author><category term="mobility" /><category term="mechanical engineering" /><category term="chemical engineering" /><category term="data" /><summary type="html">안녕하세요. 쏘카 모빌리티Lab의 Charlie(하철수) 입니다. 이번 글에서는 10,000대가 넘는 차량을 운영하는 쏘카에서 차량 관리에 어떤 기술을 어떻게 적용하고 있는지 공유하고자 합니다.</summary></entry><entry><title type="html">쏘카 데이터 그룹 - Airflow와 함께한 데이터 환경 구축기(feat. Airflow on Kubernetes)</title><link href="https://tech.socarcorp.kr/data/2021/06/01/data-engineering-with-airflow.html" rel="alternate" type="text/html" title="쏘카 데이터 그룹 - Airflow와 함께한 데이터 환경 구축기(feat. Airflow on Kubernetes)" /><published>2021-06-01T07:00:00+00:00</published><updated>2021-06-01T07:00:00+00:00</updated><id>https://tech.socarcorp.kr/data/2021/06/01/data-engineering-with-airflow</id><content type="html" xml:base="https://tech.socarcorp.kr/data/2021/06/01/data-engineering-with-airflow.html">&lt;p&gt;안녕하세요. 데이터 엔지니어링팀의 하디입니다.&lt;br /&gt;
+이번 글에서는 쏘카 데이터 그룹의 태동기(2018년)부터 현재(2021년)까지 어떻게 Airflow를 구축하고 운영했는지를 소개합니다. 특히 최근에 쏘카 데이터 그룹에 Kubernetes(정확히는 Google Kubernetes Engine)를 도입했는데, Kubernetes 위에서 Airflow를 어떻게 활용했는지에 대해 자세히 담아보려 노력했습니다.&lt;/p&gt;
+
+&lt;p&gt;이 글은 다음과 같은 분들을 대상 독자로 합니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;데이터 그룹을 운영하고 계신 분&lt;/li&gt;
+  &lt;li&gt;데이터 파이프라인 및 워크플로우 도구 도입을 고려하고 있으며, Airflow에 관심이 있으신 분&lt;/li&gt;
+  &lt;li&gt;Airflow를 기존에 사용하고 있으나, 상황에 따라 어떻게 더 활용해야 할지 고민하시는 분&lt;/li&gt;
+  &lt;li&gt;Kubernetes 환경 위에서 Airflow를 배포 및 운영을 고려하시는 분&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;이 글을 통해 다음과 같은 내용을 파악할 수 있습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;데이터 그룹의 상황에 따라 다양한 Airflow 구축과 운영하는 방법&lt;/li&gt;
+  &lt;li&gt;데이터 그룹이 성장함에 따라 생기는 데이터 엔지니어링 이슈&lt;/li&gt;
+  &lt;li&gt;Kubernetes 환경의 Airflow 배포 및 운영 전략&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;목차&quot;&gt;목차&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;기존 환경 - Rundeck&lt;/li&gt;
+  &lt;li&gt;태동기 - Google Cloud Composer&lt;/li&gt;
+  &lt;li&gt;초창기 - Google Compute Engine + Docker Compose
+    &lt;ul&gt;
+      &lt;li&gt;고려 사항&lt;/li&gt;
+      &lt;li&gt;의사 결정&lt;/li&gt;
+      &lt;li&gt;배포 형태&lt;/li&gt;
+      &lt;li&gt;운영 형태&lt;/li&gt;
+      &lt;li&gt;문제점&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;성장기 - Airflow on Kubernetes
+    &lt;ul&gt;
+      &lt;li&gt;고려 사항&lt;/li&gt;
+      &lt;li&gt;해결 방법&lt;/li&gt;
+      &lt;li&gt;배포 형태&lt;/li&gt;
+      &lt;li&gt;배포 방법&lt;/li&gt;
+      &lt;li&gt;운영 형태&lt;/li&gt;
+      &lt;li&gt;기타 추가 작업&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;성숙기를 향하여&lt;/li&gt;
+  &lt;li&gt;마무리하며&lt;/li&gt;
+  &lt;li&gt;참고한 자료&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;기존-환경---rundeck&quot;&gt;기존 환경 - Rundeck&lt;/h2&gt;
+
+&lt;p&gt;데이터 그룹이 처음 설립된 2018년, 쏘카의 테크 조직들은 Task 스케줄링 도구로 &lt;a href=&quot;https://github.com/rundeck/rundeck&quot;&gt;Rundeck&lt;/a&gt;을 사용하고 있었습니다. 데이터 그룹에서도 이 Rundeck을 그대로 사용할지, 아니면 새로운 도구를 도입해볼지 고민했습니다. 이때 다음과 같은 요구 사항을 염두에 두었습니다.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;데이터 파이프라인(ELT 혹은 ETL) 스케줄링 작업과 쏘카 서비스의 스케줄링 작업 분리를 시켜야 합니다.
+    &lt;ul&gt;
+      &lt;li&gt;쏘카 서비스와 관련된 스케쥴링 작업은 실제 고객을 대상으로 하는 작업이므로, 데이터 파이프라인보다 우선순위가 높습니다.&lt;/li&gt;
+      &lt;li&gt;데이터 파이프라인 작업 때문에 기존 쏘카 서비스에 영향을 주어서는 안 됩니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;데이터 파이프라인을 위한 다양한 기능이 제공되는 도구가 있으면 좋겠습니다.
+    &lt;ul&gt;
+      &lt;li&gt;쏘카는 데이터 웨어하우스로 BigQuery를 사용하고 있었으므로, BigQuery 및 클라우드와 쉽게 연동이 가능한 도구면 좋습니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Workflow 시각화를 잘해주는 도구가 있으면 좋겠습니다.
+    &lt;ul&gt;
+      &lt;li&gt;많은 데이터 파이프라인이 만들어질텐데, 이 파이프라인들이 어떤 테스크를 수행하는지 한 눈에 확인 가능해야 합니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;기존 Rundeck은 위와 같은 요구사항을 충족시키기엔 부족했기에, 새로운 도구를 도입하기로 결정했습니다. 결과적으로 당시 데이터 파이프라인 플랫폼으로 많이 쓰이는 Apache Airflow를 사용해보기로 결정했습니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;태동기---google-cloud-composer&quot;&gt;태동기 - Google Cloud Composer&lt;/h2&gt;
+
+&lt;p&gt;데이터 그룹이 생긴 태동기에는 데이터 엔지니어가 없었습니다. 데이터 분석가들이 직접 데이터 파이프라인을 만들어야 했습니다.&lt;br /&gt;
+기술적인 이슈보다 당장 분석에 필요한 파이프라인을 만드는 것이 가장 높은 우선순위였습니다. 따라서 직접 구축 및 관리가 필요 없는 Google Cloud의 &lt;a href=&quot;https://cloud.google.com/composer/docs&quot;&gt;Cloud Composer&lt;/a&gt;를 사용하게 되었습니다.&lt;/p&gt;
+
+&lt;p&gt;Cloud Composer는 구글 클라우드에서 제공하는 Managed Airflow입니다. 참고로 현재 AWS에도 &lt;a href=&quot;https://aws.amazon.com/managed-workflows-for-apache-airflow/&quot;&gt;Managed Airflow(MWAA)&lt;/a&gt;가 존재하지만, 그 당시엔 구글 클라우드의 Cloud Composer가 유일했습니다. 또한 쏘카에선 데이터 웨어하우스를 구글 클라우드의 BigQuery로 사용했기 때문에 같은 구글 클라우드 서비스가 꽤 괜찮은 이점을 줄 거라 생각했습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cloud.google.com/composer/docs/images/public-ip-architecture.png&quot; alt=&quot;Composer Architecture&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Cloud Composer는 정말 간단하게 사용할 수 있습니다. Airflow의 DAG 파일을 Cloud Storage에 업로드해서 사용합니다. Cloud Storage에 Airflow DAG 파일을 업로드하면 Cloud Composer에서 해당 파일을 읽어 작업을 실행합니다. 사용자 입장에서 Airflow 구성 요소에 대해 크게 신경 쓸 필요가 없이 DAG 파일만 잘 만들면 됩니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;그러나 Composer는 종종 알 수 없는 에러를 발생시켰습니다.&lt;/strong&gt; 당시 Airflow의 버전은 1.10.3로 오픈소스 자체에도 버그가 존재했습니다. 오류가 생겼을 때 로그를 직접 제대로 볼 수 없는 것이 1.10.3 버전의 가장 큰 문제였습니다. Composer의 안정성 문제와 로그와 관련된 이슈로 Composer를 계속 사용해야 하는가에 대한 고민이 시작되었습니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;초창기---google-compute-engine--docker-compose&quot;&gt;초창기 - Google Compute Engine + Docker Compose&lt;/h2&gt;
+
+&lt;p&gt;데이터 그룹이 생긴 몇 달 뒤 데이터 엔지니어분들이 데이터 그룹에 합류하게 되었고, 자체 데이터 엔지니어링 팀이 탄생했습니다. 이제 데이터 엔지니어링팀에서 데이터 파이프라인 구축과 인프라 운영을 담당하게 되었고, 이전보다 좀 더 체계적인 데이터 분석 환경을 구축해볼 수 있게 되었습니다. 이제 Cloud Composer를 벗어나 데이터 엔지니어링 팀에서 Airflow를 직접 구축하고 운영하기로 하였습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;고려-사항&quot;&gt;고려 사항&lt;/h3&gt;
+
+&lt;p&gt;이 당시 고려한 사항은 다음과 같습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;빠르고 간단하게 배포할 수 있어야 합니다.&lt;/li&gt;
+  &lt;li&gt;데이터 그룹의 누구나(데이터 분석가/데이터 사이언티스트, 데이터 엔지니어) 쉽게 DAG 작성이 가능해야 합니다.&lt;/li&gt;
+  &lt;li&gt;운영이 수월해야 합니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;데이터 엔지니어링 팀과 데이터 그룹이 크지 않기 때문에 간단하며 신속하고 유연하게 움직일 수 있는 방식을 고려했습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;의사-결정&quot;&gt;의사 결정&lt;/h3&gt;
+
+&lt;p&gt;고민 끝에 선택한 배포 방법은 Google Compute Engine 위에 Docker Compose로 Airflow의 각 컴포넌트(Webserver, Scheduler 등)를 직접 Docker 컨테이너로 띄우는 방법입니다. Github에 있는 &lt;a href=&quot;puckel/docker-airflow&quot;&gt;puckel/docker-airflow&lt;/a&gt; 이미지를 이용하면 이를 쉽게 구현할 수 있었습니다.&lt;br /&gt;
+또한 분석 팀원들에게 익숙한 Jupyter Notebook을 동일 환경에서 배포하고, Jupyter Notebook을 통해 Airflow DAG을 수정할 수 있도록 했습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;배포-형태&quot;&gt;배포 형태&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-with-airflow/00.png&quot; alt=&quot;00&quot; /&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Google Cloud Platform의 Google Compute Engine 인스턴스를 호스팅 서버로 사용합니다.&lt;/li&gt;
+  &lt;li&gt;Airflow의 각 컴포넌트인 WebServer, Scheduler, Database, Worker, Redis를 Docker Compose를 통해 각각 컨테이너로 실행합니다.&lt;/li&gt;
+  &lt;li&gt;Airflow Scheduler는 Celery Executor를 사용합니다.&lt;/li&gt;
+  &lt;li&gt;Jupyter Notobook을 Docker 컨테이너로 띄운 뒤 Airflow DAG 폴더에 Volume Mount합니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;이렇게 하면 Airflow의 각각의 컴포넌트에 대해 통제가 가능해집니다. (Docker Container 재시작, 버전 업데이트, 로그 등)&lt;/p&gt;
+
+&lt;h3 id=&quot;운영-형태&quot;&gt;운영 형태&lt;/h3&gt;
+
+&lt;p&gt;Google Compute Engine에 배포 후, 다음과 같은 방법으로 Airflow를 사용했습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;DAG 작성자는 Jupyter Notebook 웹에 접속해 DAG을 작성합니다.
+    &lt;ul&gt;
+      &lt;li&gt;Jupyter Notebook을 통해 쉽게 코드 작성이 가능합니다.&lt;/li&gt;
+      &lt;li&gt;Volume Mount 되어 있기 때문에 저장하면 몇 초 내로 Airflow에 반영됩니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Airflow의 Connections에 BigQuery 설정을 저장해 재사용 가능하게 합니다.
+    &lt;ul&gt;
+      &lt;li&gt;이런 설정을 저장하는 일은 주로 데이터 엔지니어링팀에서 담당합니다.&lt;/li&gt;
+      &lt;li&gt;DAG 작성자는 저장한 설정을 사용합니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;위와 같은 방식은 Airflow를 간단하게 배포할 수 있었고, 운영 역시 어렵지 않았습니다. 
+그러나 조직과 서비스가 점점 성장하면서 여러 문제점이 보이기 시작했습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;문제점&quot;&gt;문제점&lt;/h3&gt;
+
+&lt;h4 id=&quot;1-늘어나는-dag&quot;&gt;1) 늘어나는 DAG&lt;/h4&gt;
+
+&lt;p&gt;데이터와 서비스가 성장하면서 DAG의 수도 점점 늘어났습니다. DAG의 수가 늘어나다 보니 DAG의 실행 속도도 점점 느려지고, 제시간에 실행되지 않고 시작 시간이 밀리는 경우도 발생했습니다. 특히 배치 주기가 짧은 DAG에서 이런 현상은 매우 심각한 문제였습니다.&lt;/p&gt;
+
+&lt;p&gt;이런 경우에 할 수 있는 일은 Google Compute Engine의 머신 유형을 한 단계 업그레이드(컴퓨팅 리소스를 수직 확장, Scale Up)하는 방법뿐이었습니다. 그러나 이 방법을 선택해도 DAG이 실행되는 특정 시간 외에는 리소스를 쓰는 일이 거의 없기 때문에 리소스 사용 효율 측면에서는 매우 비효율적입니다. &lt;strong&gt;리소스를 유연하고 효율적으로 사용할 수 있는 방법에 대해 고민이 들기 시작했습니다.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;2-규칙-없이-제각각으로-작성된-dag-코드&quot;&gt;2) 규칙 없이 제각각으로 작성된 DAG 코드&lt;/h4&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;여러 사람이 모두 제각각의 스타일로 작성한 DAG을 작성하였습니다. 예를 들어 어떤 DAG에는 &lt;code class=&quot;highlighter-rouge&quot;&gt;on_failure_callback&lt;/code&gt; 값이 있는 반면, 어떤 DAG들은 이 값들이 보이지 않았습니다.&lt;/li&gt;
+  &lt;li&gt;Jupyter Notebook 환경에서 코드를 작성하다 보니 PEP8과 같은 스타일 컨벤션을 잘 지키긴 어려웠습니다.&lt;/li&gt;
+  &lt;li&gt;가장 큰 문제는 DAG 코드가 담긴 모듈 이름에 규칙이 없어서, Airflow 웹에서 문제가 생긴 DAG이 실제로 어떤 파일인지 찾기 쉽지 않았습니다.&lt;/li&gt;
+  &lt;li&gt;DAG 파일을 언제 생성했고 수정했는지에 대한 히스토리가 없어서 문제가 생겼을 때 원인을 찾기 어려웠습니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;일관된 DAG의 템플릿과 PEP8과 같은 코드 스타일 규칙의 필요성이 느껴졌습니다. 또한 코드 변경을 추적할 수 있도록 버전 관리 도구(Git 등)의 필요성을 느끼기 시작했습니다.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;3-복잡해지는-의존성-문제&quot;&gt;3) 복잡해지는 의존성 문제&lt;/h4&gt;
+
+&lt;p&gt;Airflow의 버전이 바뀌면 기존 DAG코드도 변경해야 하는 문제가 있습니다. Airflow 버전은 생각보다 빠르게 업데이트되었고, 그때마다 의존성/안정성의 문제로 쉽게 Airflow의 버전을 올리기 어려웠습니다.&lt;/p&gt;
+
+&lt;p&gt;그리고 일부 DAG에서  &lt;code class=&quot;highlighter-rouge&quot;&gt;requests&lt;/code&gt; 나 &lt;code class=&quot;highlighter-rouge&quot;&gt;beautifulsoup4&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;lxml&lt;/code&gt; 와 같은 라이브러리를 사용하는 경우가 있습니다. 이런 경우 Airflow Webserver, Scheduler, Worker 컨테이너에 모두 라이브러리를 설치해야 했습니다. 설치된 Airflow 버전과 호환이 되어야 했기 때문에 파이썬 버전도 신경 써야 했습니다. 이렇게 가다간 흔히 말하는 의존성 지옥에 빠질 거 같았습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Airflow, 라이브러리, 파이썬 버전 등 점점 복잡해지는 의존성을 더 쉽게 해결할 방법을 찾아야 했습니다.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;4-운영과-테스트의-혼재&quot;&gt;4) 운영과 테스트의 혼재&lt;/h4&gt;
+
+&lt;p&gt;이 당시 Airflow상에 있는 DAG은 대부분 Data Lake나 Data Mart를 만드는 파이프라인이 많았고, 이 파이프라인들의 목적지는 주로 BigQuery였습니다. 대부분의 DAG 작성자들은 파이프라인이 잘 작동하는지 테스트하기 위해 BigQuery의 최종 테이블 이름 끝에 &lt;code class=&quot;highlighter-rouge&quot;&gt;_test&lt;/code&gt; 를 붙여서 실행하는 경우가 많았습니다. 이렇게 실행 후, 테스트한 데이터셋을 지우지 않는 경우가 많아 BigQuery에 &lt;code class=&quot;highlighter-rouge&quot;&gt;_test&lt;/code&gt; 로 끝나는 테이블들이 너무 많이 생기게 되었습니다.&lt;/p&gt;
+
+&lt;p&gt;그리고 테스트하는 과정에서 실제 운영 중인 테이블에 직접 접근하는 로직이 포함된 DAG이 있는데, 이 DAG들이 가장 큰 문제였습니다. 예를 들어 DAG 작성자가 &lt;code class=&quot;highlighter-rouge&quot;&gt;BigqueryOperator&lt;/code&gt; 를 사용해 테스트할 때, 깜빡하고 테이블 이름 끝에  &lt;code class=&quot;highlighter-rouge&quot;&gt;_test&lt;/code&gt; 를 붙이지 않고 DAG을 실행하는 경우, 실제 운영되는 테이블을 덮어쓰거나 과거 데이터를 날려버릴 수 있습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;운영 환경과 격리되어 안전하게 테스트할 수 있도록 별도의 개발 환경이 필요했습니다.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;성장기---airflow-on-kubernetes&quot;&gt;성장기 - Airflow on Kubernetes&lt;/h2&gt;
+
+&lt;p&gt;데이터 그룹이 생긴 이후 2년 동안 회사는 빠르게 성장했고, 데이터 그룹의 인원도 7명에서 27명으로 늘어나게 되었습니다. Airflow에서도 다양한 DAG이 생기게 되었고, 그 개수는 600개를 넘어섰습니다. 또한 데이터 그룹의 데이터 분석가 모두 Airflow DAG을 작성할 수 있었기 때문에 DAG을 작성하는 사람들도 많아지고, 사용하는 &lt;code class=&quot;highlighter-rouge&quot;&gt;Operator&lt;/code&gt;도 더 다양해졌습니다. 더 많은 리소스가 필요하게 되었고, 관리할 포인트가 점점 더 생겼습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;고려-사항-1&quot;&gt;고려 사항&lt;/h3&gt;
+
+&lt;p&gt;위에서 생긴 문제들을 해결할 방안을 생각해야 했습니다. 구체적으로는 다음 관점으로 Airflow 고도화에 대해 생각했습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;DAG이 늘어나도 실행 시간이 늘어나거나 지연이 없도록 &lt;strong&gt;리소스를 유연하게 확보 및 할당할 수 있어야 합니다&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;깔끔하고 일관된 DAG 코드&lt;/strong&gt;와 파라미터값을 표준화해야 합니다&lt;/li&gt;
+  &lt;li&gt;Airflow와 파이썬, 파이썬 라이브러리의 &lt;strong&gt;의존성을 최대한 낮춰야 합니다&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;운영 환경에 영향을 주지 않고 &lt;strong&gt;테스트 가능한 별도의 환경이 필요합니다&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;해결-방법&quot;&gt;해결 방법&lt;/h3&gt;
+
+&lt;p&gt;다양한 고려 사항을 기반으로 다음과 같은 해결 방법을 세우고, 하나씩 도입하기 시작했습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;단일 컴퓨팅이 아닌 &lt;strong&gt;Kubernetes를 도입&lt;/strong&gt;합니다.
+    &lt;ul&gt;
+      &lt;li&gt;Node Auto Scaling을 적용해 필요에 따라 리소스를 유연하게 확보하고 할당할 수 있습니다.&lt;/li&gt;
+      &lt;li&gt;사용할 노드 풀을 직접 관리하기 때문에 CPU, GPU 사용량이 높은 파이프라인을 실행하기 좋습니다.&lt;/li&gt;
+      &lt;li&gt;Airflow 외에도 데이터 그룹에 필요한 다른 서비스들도 이 클러스터에서 관리할 수 있습니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Airflow를 1.10.14 버전으로 업데이트하고, &lt;strong&gt;Kubernetes Executor를 사용&lt;/strong&gt;합니다.
+    &lt;ul&gt;
+      &lt;li&gt;Task 단위로 Pod을 생성하기 때문에 동시에 여러 Task를 빠르게 실행할 수 있습니다.&lt;/li&gt;
+      &lt;li&gt;Node Auto Scaling이 적용되어 있어 DAG이 늘어나도 리소스로 인한 실행 속도에 문제가 없습니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;특정 환경(라이브러리, 파이썬 버전 등)의 의존성이 강한 DAG은 &lt;strong&gt;KubernetesPodOperator를 사용&lt;/strong&gt;합니다.
+    &lt;ul&gt;
+      &lt;li&gt;KubernetesPodOperator는 Airflow 1.10.x 버전부터 등장한 오퍼레이터로, 파라미터로 컨테이너 이미지를 입력받고 해당 이미지를 실행합니다.&lt;/li&gt;
+      &lt;li&gt;즉 실행할 프로그램을 Airflow에 의존성 없이 개발할 수 있고, 이를 컨테이너 이미지로 잘 말아두면 KubernetesPodOperator로 실행할 수 있습니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;DAG &lt;strong&gt;코드 작성에 규칙을 생성&lt;/strong&gt;합니다.
+    &lt;ul&gt;
+      &lt;li&gt;DAG 템플릿을 추상화해서 몇 개만 입력하면 DAG 코드를 생성할 수 있는 CLI를 생성했습니다. 이 CLI를 사용해 규격화된 DAG 파일을 생성합니다.&lt;/li&gt;
+      &lt;li&gt;Code Formatter로 &lt;a href=&quot;https://github.com/psf/black&quot;&gt;Black&lt;/a&gt;을 사용하고, CI 과정에서 포매팅을 검사합니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;DAG 코드를 &lt;strong&gt;Git과 Github로 버전 관리&lt;/strong&gt; 합니다.
+    &lt;ul&gt;
+      &lt;li&gt;누가 언제 어떤 코드를 추가, 변경했는지 관리할 수 있습니다.&lt;/li&gt;
+      &lt;li&gt;코드 리뷰를 통해 보다 나은 DAG 코드를 유지합니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;개발용 Google Cloud Platform 프로젝트에 &lt;strong&gt;격리된 테스트용 Airflow 환경&lt;/strong&gt;을 만듭니다.
+    &lt;ul&gt;
+      &lt;li&gt;DAG 코드가 담긴 Github Repository의 브랜치에 따라 동적으로 테스트용 Airflow를 배포합니다.
+        &lt;ul&gt;
+          &lt;li&gt;예를 들면 &lt;code class=&quot;highlighter-rouge&quot;&gt;feature/hardy&lt;/code&gt; 라는 브랜치를 만들면 &lt;code class=&quot;highlighter-rouge&quot;&gt;hardy&lt;/code&gt; 용 Airflow가 배포됩니다.&lt;/li&gt;
+          &lt;li&gt;이런 방식으로 자신의 DAG을 테스트할 Airflow를 할당받을 수 있습니다.&lt;/li&gt;
+          &lt;li&gt;격리된 환경이기 때문에 다른 사람의 작업 내용에 영향받지 않고 작업할 수 있습니다.&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;개발 환경에서는 운영 BigQuery에 READ만 가능하도록 합니다.&lt;/li&gt;
+      &lt;li&gt;자세한 내용은 아래에서 더 설명하겠습니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Kubernetes 환경을 도입하면 여러 장점이 많아지지만, 운영의 복잡도와 난이도가 높아집니다. 2년 전과 비교해 Cloud Composer도 많이 성숙해졌고 AWS MWAA도 등장해 이 서비스를 다시 활용하는 것도 고려해보았으나, &lt;strong&gt;데이터 그룹에서 사용할 Kubernetes 클러스터를 직접 만들고 이 위에서 여러 서비스를 운영하기로 결정했습니다.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;데이터 엔지니어링 팀도 점점 커지고 있어 관리할 수 있는 사람이 많아졌고, 점점 더 복잡해질 인프라 구축에 맞서서 노력할 준비가 되어있었습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;배포-형태운영-환경&quot;&gt;배포 형태(운영 환경)&lt;/h3&gt;
+
+&lt;p&gt;운영과 개발 환경의 배포 형태가 미세하지만 다르게 만들었습니다.&lt;/p&gt;
+
+&lt;p&gt;먼저 운영(Prod) 환경은 개발(Dev) 환경과 다른 별도의 Google Cloud Plaform 프로젝트에서 구성됩니다.&lt;br /&gt;
+형태는 다음과 같습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-with-airflow/01.png&quot; alt=&quot;01&quot; /&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;GKE(Google Kuberentes Engine)에 별도의 Namespace 위에 Airflow가 배포됩니다.&lt;/li&gt;
+  &lt;li&gt;Scheduler는 Kubernetes Executor를 사용합니다.
+    &lt;ul&gt;
+      &lt;li&gt;Airflow 컴포넌트는 Webserver, Scheduler, Database, Worker만 필요하게 됩니다.&lt;/li&gt;
+      &lt;li&gt;각 컴포넌트는 Pod 단위로 배포됩니다.&lt;/li&gt;
+      &lt;li&gt;Worker Pod는 DAG 내 Task 단위로 동적으로 생성되었다가 내려갑니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;위에서 핵심 컴포넌트들을 하나씩 살펴보겠습니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;1-external-databasecloud-sql-사용&quot;&gt;1) External Database(Cloud SQL) 사용&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-with-airflow/02.png&quot; alt=&quot;02&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Airflow 컴포넌트 중 하나인 Database는 Stateful 하므로, Kubernetes 내부에서 관리하는 것보다 Kubernetes 외부에서 운영하는 것이 더 적합하다고 생각했습니다. 다양한 Database 중 Cloud SQL이  Google Cloud Platform에 있기에 활용하기 수월할 것으로 판단했습니다. GKE 내부에서는 Cloud SQL과 통신하기 위해 Cloud SQL Proxy를 Daemonset 형태로 배포합니다. Airflow는 이 Proxy를 거쳐 Kubernetes 외부 Database와 통신하게 됩니다.&lt;/p&gt;
+
+&lt;p&gt;이렇게 하면 Airflow가 Kubernetes에서 무슨 일이 생기거나, 재배포되어도 데이터는 여전히 남아있게 됩니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;2-dag을-담는-github-repo-생성-및-git-sync&quot;&gt;2) DAG을 담는 Github Repo 생성 및 Git-sync&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-with-airflow/03.png&quot; alt=&quot;03&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Github Repository에 DAG들을 저장합니다. 운영 환경에 반영되는 DAG들은 &lt;code class=&quot;highlighter-rouge&quot;&gt;main&lt;/code&gt; 브랜치에 담습니다.&lt;/p&gt;
+
+&lt;p&gt;Webserver, Scheduler Pod 내부에 Git-sync는 주기적으로 이 Github Repository를 Pull합니다. Worker의 경우 처음에만 (Initial Container) Clone합니다. Git-sync가 Pull 혹은 Clone한 리포지토리는 Airlfow DAG 폴더에 마운트되어 있습니다. 따라서 Git-sync 작동에 따라 Airflow DAG 폴더가 주기적으로 업데이트됩니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;3-remote-loggingcloud-storage-사용&quot;&gt;3) Remote Logging(Cloud Storage) 사용&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-with-airflow/04.png&quot; alt=&quot;04&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;각 Airflow 컴포넌트가 Pod 단위로 배포되므로, Pod간 공유할 수 있는 별도의 로그 저장소가 필요합니다.&lt;br /&gt;
+이를 위해 Airflow의 &lt;code class=&quot;highlighter-rouge&quot;&gt;AIRFLOW__CORE__REMOTE_LOGGING&lt;/code&gt; 값을 &lt;code class=&quot;highlighter-rouge&quot;&gt;True&lt;/code&gt;로 두어 Remote Logging 기능을 사용합니다.&lt;/p&gt;
+
+&lt;p&gt;Worker Pod에서 발생하는 로그 파일들은 모두 Cloud Storage에 저장되고, Airflow에서도 이 파일을 읽어서 Webserver에서 출력합니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;4-kubernetes-executor-사용&quot;&gt;4) Kubernetes Executor 사용&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-with-airflow/05.png&quot; alt=&quot;05&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Kubernetes Executor를 사용하면 Worker를 Pod 형태로 동적으로 생성하게 됩니다. DAG이 실행될 때 Task 하나당 하나의 Worker Pod가 배포 및 실행된 후 삭제됩니다. 실행할 DAG이 없는 경우 Kubernetes 위에 Worker Pod이 존재하지 않습니다.&lt;/p&gt;
+
+&lt;p&gt;즉, 실행할 Task가 없을 때는 리소스 사용이 줄었다가 실행할 Task가 생기면 필요한 만큼 리소스를 할당하고 사용합니다. 결과적으로 리소스를 더 유연하고 효율적으로 사용합니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;배포-형태개발-환경&quot;&gt;배포 형태(개발 환경)&lt;/h3&gt;
+
+&lt;p&gt;개발 환경은 운영 환경과 별도의 Google Cloud Platform 프로젝트에 구성됩니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-with-airflow/06.png&quot; alt=&quot;06&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;전반적으로 운영 환경의 배포와 동일합니다. 다만 DB가 Kubernetes 외부 Database가 아닌 Kubernetes 내부 Database입니다.&lt;/p&gt;
+
+&lt;p&gt;개발 환경의 Airflow는 항상 배포되어 있지 않고, DAG Github 리포지토리에 &lt;code class=&quot;highlighter-rouge&quot;&gt;feature/&lt;/code&gt; 로 시작하는 브랜치가 생성될 때 동적으로 배포되었다가 브랜치 삭제하는 시점에 내려갑니다. 즉 개인이 DAG 작업할 때에만 테스트하기 위한 용도로 배포되는 방식입니다. 테스트를 완료한 이후에는 테스트에 사용된 DB 역시 삭제해야 하기 때문에 외부 DB가 아닌 Kubernetes 내부 DB를 사용했습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;배포-방법&quot;&gt;배포 방법&lt;/h3&gt;
+
+&lt;p&gt;Kubernetes 클러스터에 App 배포는 &lt;a href=&quot;https://argoproj.github.io/argo-cd/&quot;&gt;ArgoCD&lt;/a&gt;를 사용하고 있습니다. ArgoCD는 GitOps 형태로 Kubernetes에 App을 배포할 수 있는 CD 도구입니다.&lt;/p&gt;
+
+&lt;p&gt;Kubenetes에 배포할 Helm 차트를 별도의 Github Repository에 보관합니다.&lt;br /&gt;
+(차트는 &lt;a href=&quot;https://github.com/helm/charts/tree/master/stable/airflow&quot;&gt;커뮤니티 버전의 Airflow 차트 7.7.0 버전&lt;/a&gt;을 기반으로 커스터마이징했습니다.)&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-with-airflow/07.png&quot; alt=&quot;07&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;이후 ArgoCD Webserver에서 이 Github Repository와 연결을 맺도록 설정합니다. 그리고 App을 배포합니다. (ArgoCD로 App을 배포하는 방법은 &lt;a href=&quot;https://coffeewhale.com/kubernetes/gitops/argocd/2020/02/10/gitops-argocd/&quot;&gt;커피고래님 블로그 글&lt;/a&gt;을 참고하시면 좋습니다)&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-with-airflow/08.png&quot; alt=&quot;08&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;운영-형태-1&quot;&gt;운영 형태&lt;/h3&gt;
+
+&lt;h4 id=&quot;1-dag-작성-프로세스&quot;&gt;1) DAG 작성 프로세스&lt;/h4&gt;
+
+&lt;p&gt;이제 Jupyter Notebook으로 DAG을 작성하지 않습니다.&lt;/p&gt;
+
+&lt;p&gt;각자 개인의 컴퓨터(로컬)의 IDE와 Git branch를 통해 DAG을 작성하고 Github Repository에 Push합니다. 위에서 설명한 것처럼 Repository에 Push하면 자동으로 브랜치별로 Airflow가 생성되어 DAG을 확인할 수 있습니다.&lt;/p&gt;
+
+&lt;p&gt;DAG을 작성할 때, 엔지니어링팀에서 만든 CLI를 사용합니다. 이 CLI는 Boilerplate를 생성할 수 있는 도구입니다. CLI에서 DAG 파일 이름이나  &lt;code class=&quot;highlighter-rouge&quot;&gt;dag_id&lt;/code&gt;  생성 규칙이 담겨있습니다. 이런 방식을 사용해서 DAG의 기본 모양새를 일관성 있게 관리할 수 있고 DAG 작성자 관점에서도 고민없이 쉽게 DAG을 생성할 수 있습니다.&lt;/p&gt;
+
+&lt;p&gt;DAG 작성 및 테스트 후에는 &lt;code class=&quot;highlighter-rouge&quot;&gt;main&lt;/code&gt; 브랜치로 Pull Request를 보냅니다. 데이터 그룹의 다른 팀원들의 리뷰를 받은 후 본격적으로 공용 브랜치인 &lt;code class=&quot;highlighter-rouge&quot;&gt;main&lt;/code&gt; 에 자신이 만든 DAG이 합류하게 됩니다.&lt;/p&gt;
+
+&lt;p&gt;좀 더 구체적인 프로세스를 설명드리면 다음과 같습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;DAG 작성자는 먼저 DAG을 저장하고 있는 Github Repository를 Clone 받습니다.&lt;/li&gt;
+  &lt;li&gt;본인이 작업할 브랜치 (&lt;code class=&quot;highlighter-rouge&quot;&gt;feature/*&lt;/code&gt;)를 만들고 DAG Boilerplate CLI로 DAG을 작성합니다.
+    &lt;ul&gt;
+      &lt;li&gt;예를 들면 브랜치 이름을 &lt;code class=&quot;highlighter-rouge&quot;&gt;feature/hardy&lt;/code&gt;으로 설정합니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Github remote origin으로 push 합니다.&lt;/p&gt;
+
+    &lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  &lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;git push origin feature/hardy
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Github에 새로운 &lt;code class=&quot;highlighter-rouge&quot;&gt;feature/*&lt;/code&gt; 브랜치가 생성되며, 본인이 작업할 수 있는 Airflow가 할당됩니다.
+    &lt;ul&gt;
+      &lt;li&gt;이 Airflow는 개발 환경에 배포되며, 본인이 작업하는 Github 브랜치와 동기화됩니다.&lt;/li&gt;
+      &lt;li&gt;위 예시에선 &lt;code class=&quot;highlighter-rouge&quot;&gt;airflow.socar-data/feature/hardy&lt;/code&gt; 로 접속할 수 있습니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;본인이 할당받은 Airflow에서 테스트를 마친 후 &lt;code class=&quot;highlighter-rouge&quot;&gt;main&lt;/code&gt; 브랜치로 Pull Request를 보냅니다.
+    &lt;ul&gt;
+      &lt;li&gt;CI 파이프라인에서 코드가 Black으로 포매팅되어있는지 확인합니다.&lt;/li&gt;
+      &lt;li&gt;여러 팀원들에게 리뷰를 받은 후 최종적으로 Squash &amp;amp; Merge합니다.&lt;/li&gt;
+      &lt;li&gt;Branch가 삭제되면 할당받은 Airflow도 삭제됩니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-with-airflow/09.png&quot; alt=&quot;09&quot; /&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;strong&gt;* DAG Boilerplate CLI 도구&lt;/strong&gt;&lt;/p&gt;
+
+  &lt;p&gt;DAG 작성자가 처음에 DAG 작성을 어떻게 할지 모르거나 당장 뼈대가 되는 코드가 필요한 경우, 비슷한 다른 DAG 코드를 복사해 사용하는 경우가 많았습니다. 그러나 다른 비슷한 DAG을 찾는 것도 번거롭고, 무엇보다 다른 DAG 코드의 형태에 의존하다 보니 DAG의 기본 형태가 일관되지 않았습니다.&lt;/p&gt;
+
+  &lt;p&gt;이 때문에 DAG의 기본 형태를 규칙적으로 만들어주는 별도의 CLI 도구를 만들었습니다.&lt;br /&gt;
+다음처럼 이 도구를 사용할 수 있습니다. (실행 결과로 DAG 파일을 만들어줍니다.)&lt;/p&gt;
+
+  &lt;p&gt;&lt;img src=&quot;/img/data-engineering-with-airflow/10.png&quot; alt=&quot;10&quot; /&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h4 id=&quot;2-airflow-cicd&quot;&gt;2) Airflow CI/CD&lt;/h4&gt;
+
+&lt;p&gt;위와 같이 DAG 작성자의 &lt;code class=&quot;highlighter-rouge&quot;&gt;feature/*&lt;/code&gt; 브랜치에 기반한 Airflow를 할당하기 위한 CI/CD 파이프라인은 다음과 같습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-with-airflow/11.png&quot; alt=&quot;11&quot; /&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Github Repository Webhook에서 Branch 생성 및 삭제하는 경우, CI/CD 파이프라인이 동작하는 트리거를 생성합니다.&lt;/li&gt;
+  &lt;li&gt;쏘카에선 쉽게 CI/CD 파이프라인을 구축할 수 있는 &lt;a href=&quot;https://app.buddy.works/&quot;&gt;BuddyWorks&lt;/a&gt;를 사용하고 있습니다.&lt;/li&gt;
+  &lt;li&gt;Branch 생성 시 BuddyWorks 내 파이프라인에서는 다음과 같이 실행됩니다.
+    &lt;ul&gt;
+      &lt;li&gt;클러스터와 통신할 수 있는 Bastion Host에 ssh 접속합니다.&lt;/li&gt;
+      &lt;li&gt;Bastion Host에서 ArgoCD Client를 통해 클러스터에 배포되어있는 ArgoCD Server에 로그인합니다.&lt;/li&gt;
+      &lt;li&gt;ArgoCD Client로 현재 HEAD branch와 연동된 Airflow 앱을 배포합니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Branch 삭제 시, 같은 방법으로 위에서 생성된 Airflow 앱을 삭제합니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;CI/CD 파이프라인 동작 모니터링은 Slack 채널을 통해 알람을 받습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-with-airflow/12.png&quot; alt=&quot;12&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;3-리소스-모니터링&quot;&gt;3) 리소스 모니터링&lt;/h4&gt;
+
+&lt;p&gt;Kubernetes에서 동적으로 Airflow를 운영하다보니, 리소스 모니터링이 또한 중요하게 되었습니다.&lt;br /&gt;
+아직 모니터링을 고도화하지는 않았지만 KubeLens와 Grafana로 모니터링하고 있습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-with-airflow/13.png&quot; alt=&quot;13&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/data-engineering-with-airflow/14.png&quot; alt=&quot;14&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;기타-추가-작업&quot;&gt;기타 추가 작업&lt;/h3&gt;
+
+&lt;p&gt;Airfow를 더 커스터마이징해서 사용하기 위해 Airflow 1.10.14 버전을 Clone 받아 일부 코드를 아래 내용처럼 수정했습니다.&lt;/p&gt;
+
+&lt;h4 id=&quot;1-pod-이름-생성-로직-수정&quot;&gt;1) Pod 이름 생성 로직 수정&lt;/h4&gt;
+
+&lt;p&gt;Airflow 1.10.14 버전을 그대로 사용하면 Worker Pod 이름이 다음처럼 생성됩니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# dag_id가 replication_database_table_one 이고&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# task_id가 db_replicaion_task 인 경우&lt;/span&gt;
+replicationdatabasetableonedbreplicaiontask-hashvalue
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Pod 이름이 읽기 어렵습니다. (Pod 이름이 생성되는 코드는 Airflow Github 코드에서 &lt;a href=&quot;https://github.com/apache/airflow/blob/c743b95a02ba1ec04013635a56ad042ce98823d2/airflow/executors/kubernetes_executor.py#L541&quot;&gt;이 부분&lt;/a&gt;과 &lt;a href=&quot;https://github.com/apache/airflow/blob/c743b95a02ba1ec04013635a56ad042ce98823d2/airflow/executors/kubernetes_executor.py#L508&quot;&gt;이 부분&lt;/a&gt;을 보면 알 수 있습니다.)&lt;br /&gt;
+Pod 이름을 &lt;code class=&quot;highlighter-rouge&quot;&gt;{dag_id}.{task_id}-hashvalue&lt;/code&gt; 같은 형태로 바꾸어 더 보기 쉽게 만들고 싶었습니다. 예를 들면 다음과 같습니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;replication-database-table-one.db-replicaion-task-hashvalue
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;이를 위해 Airflow 코드에서 Pod 이름을 생성하는 로직 일부를 다음과 같이 수정했습니다. (주석 처리한 부분이 수정한 기존 코드입니다.)&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;# airflow/executors/kubernetes_executor.py 
+&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;staticmethod&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;_create_pod_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dag_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;task_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;safe_dag_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;AirflowKubernetesScheduler&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_strip_unsafe_kubernetes_special_chars&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dag_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;safe_task_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;AirflowKubernetesScheduler&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_strip_unsafe_kubernetes_special_chars&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;task_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;# return safe_dag_id + safe_task_id
+&lt;/span&gt;    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;safe_dag_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;.&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;safe_task_id&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;_strip_unsafe_kubernetes_special_chars&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;...&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;# return &quot;&quot;.join(ch.lower() if ch.isalnum() else ch for ind, ch in enumerate(string))
+&lt;/span&gt;    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;string&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;lower&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;replace&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;_&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;-&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h4 id=&quot;2-operator-weightrule--변경&quot;&gt;2) Operator WeightRule  변경&lt;/h4&gt;
+
+&lt;p&gt;Airflow 오퍼레이터의 기본 &lt;code class=&quot;highlighter-rouge&quot;&gt;weight_rule&lt;/code&gt; 은 &lt;code class=&quot;highlighter-rouge&quot;&gt;WeightRule.DOWNSTREAM&lt;/code&gt; 입니다.&lt;br /&gt;
+이 때문에 DAG 내에서 뒤쪽에 실행되는 Task들은 낮은 실행 우선순위를 갖게되고, DAG이 늘어날수록 전반적인 DAG 실행시간이 길어지는 경향이 있습니다. (이와 관련한 자세한 내용은 &lt;a href=&quot;https://engineering.linecorp.com/ko/blog/data-engineering-with-airflow-k8s-2/&quot;&gt;Line engineering 블로그 글&lt;/a&gt;에서 확인하실 수 있습니다.)&lt;/p&gt;
+
+&lt;p&gt;Task가 어느 위치에 있어도 같은 우선순위를 주기 위해 &lt;code class=&quot;highlighter-rouge&quot;&gt;weight_rule&lt;/code&gt; 의 기본 값을 &lt;code class=&quot;highlighter-rouge&quot;&gt;WeightRule.ABSOLUTE&lt;/code&gt; 로 수정했습니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;# airflow/models/baseoperator.py 
+&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;BaseOperator&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;__init__&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;...&lt;/span&gt;
+        &lt;span class=&quot;c1&quot;&gt;# weight_rule=WeightRule.DOWNSTREAM,  # type: str
+&lt;/span&gt;        &lt;span class=&quot;n&quot;&gt;weight_rule&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;WeightRule&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ABSOLUTE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;  &lt;span class=&quot;c1&quot;&gt;# type: str
+&lt;/span&gt;        &lt;span class=&quot;o&quot;&gt;...&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h4 id=&quot;3-scheduler-webserver-성능-관련-configuration-값-수정&quot;&gt;3) Scheduler, Webserver 성능 관련 Configuration 값 수정&lt;/h4&gt;
+
+&lt;p&gt;DAG 수가 늘어나면서 Scheduler가 전체 DAG을 파싱하는 속도가 점점 느려지는 문제가 있습니다. 따라서 Scheduler의 성능을 올려주어야 하는데, CPU 리소스를 더 늘리는 방법 말고도 Airflow Configuration 값을 다음과 같이 수정해서 성능을 향상시킬 수 있습니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-yaml highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;na&quot;&gt;AIRFLOW__SCHEDULER__PARSING_PROCESSES&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;8&lt;/span&gt;  &lt;span class=&quot;c1&quot;&gt;#  기본 값은 2입니다.&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;물론 &lt;code class=&quot;highlighter-rouge&quot;&gt;parsing_process&lt;/code&gt;의 수를 늘리는 것에 비례해서 CPU 리소스는 더 잡아먹습니다. (따라서 Kubernetes에서 컨테이너 리소스도 더 늘려줘야 합니다.) 하지만 이런 트레이드오프가 있음에도 불구하고, DAG 실행 속도를 늘리는게 더 좋다고 판단했습니다.&lt;/p&gt;
+
+&lt;p&gt;또한 Webserver 접속 시 페이지 로드 지연을 줄이기 위해 다음 Configration 값들도 수정했습니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-yaml highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;na&quot;&gt;AIRFLOW__WEBSERVER__PAGE_SIZE&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;50&lt;/span&gt;  &lt;span class=&quot;c1&quot;&gt;# 기본 값은 100입니다.&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;AIRFLOW__WEBSERVER__WORKER_REFRESH_INTERVAL&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;1800&lt;/span&gt;   &lt;span class=&quot;c1&quot;&gt;# 기본 값은 30입니다. &lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;AIRFLOW__WEBSERVER__WEB_SERVER_WORKER_TIMEOUT&lt;/span&gt;&lt;span class=&quot;pi&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;m&quot;&gt;300&lt;/span&gt;  &lt;span class=&quot;c1&quot;&gt;# 기본 값은 120입니다.&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h4 id=&quot;4-빌드-과정에-라이브러리-추가&quot;&gt;4) 빌드 과정에 라이브러리 추가&lt;/h4&gt;
+
+&lt;p&gt;Airflow에서 제공하지않는 라이브러리를 사용하는 경우, 수동으로 라이브러리를 설치해야 합니다. 예를 들면 &lt;code class=&quot;highlighter-rouge&quot;&gt;beautifulsoup4&lt;/code&gt;가 라이브러리를 예로 들 수 있습니다.&lt;/p&gt;
+
+&lt;p&gt;문제는 Webserver, Scheduler, Worker 모든 Pod에 설치해야 하는데, 매번 필요할 때마다 설치하는게 번거롭습니다. 이렇게 자주 사용할 라이브러리는 Airflow 프로젝트 소스 내에 &lt;code class=&quot;highlighter-rouge&quot;&gt;extra-requirements.txt&lt;/code&gt;를 만들어 이 안에 명시하고 Airflow 이미지를 빌드할 때  이 &lt;code class=&quot;highlighter-rouge&quot;&gt;extra-requirements.txt&lt;/code&gt;를 설치하도록 &lt;code class=&quot;highlighter-rouge&quot;&gt;Dockerfile&lt;/code&gt;에 추가했습니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;# extra-requirements.txt 
+&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;beautifulsoup4&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;==&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;4.9.3&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;lxml&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;==&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;4.6.2&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;div class=&quot;language-dockerfile highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# Dockerfile&lt;/span&gt;
+
+...
+&lt;span class=&quot;k&quot;&gt;COPY&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; ./extra-requirements.txt /extra-requirements.txt&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;RUN &lt;/span&gt;pip &lt;span class=&quot;nb&quot;&gt;install&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-r&lt;/span&gt; extra-requirements.txt
+...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;성숙기를-향하여&quot;&gt;성숙기를 향하여&lt;/h2&gt;
+
+&lt;p&gt;Airflow를 Kubernetes로 옮기며, 그 환경에 알맞게 사용하는 큰 흐름은 마무리지었습니다. 그러나 아직 운영이 성숙해지기 위한 몇 가지 작업들이 남아있습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;airflow-2x으로-업그레이드&quot;&gt;Airflow 2.x으로 업그레이드&lt;/h3&gt;
+
+&lt;p&gt;2020년 말 &lt;a href=&quot;https://airflow.apache.org/blog/airflow-two-point-oh-is-here/&quot;&gt;Airflow 2.0.0이 발표&lt;/a&gt;되었습니다. 메이저 버전이 바뀐만큼 기존에 있던 기능이 수정되기도 하고, 새로운 기능이 추가되기도 했습니다. 그 중 특히 눈에 띄는 것은 &lt;a href=&quot;https://airflow.apache.org/blog/airflow-two-point-oh-is-here/#massive-scheduler-performance-improvements&quot;&gt;Scheduler의 로직의 퍼포먼스 향상&lt;/a&gt;과 &lt;a href=&quot;https://airflow.apache.org/blog/airflow-two-point-oh-is-here/#massive-scheduler-performance-improvements&quot;&gt;HA(High Availity) 지원&lt;/a&gt;입니다.&lt;/p&gt;
+
+&lt;p&gt;앞으로 더 늘어날 DAG을 고려하면 2.x 버전으로 버전을 올리는게 매우 좋을 것으로 예상됩니다. 다만 아직은 Kubernetes에 Airflow를 운영한 초창기고 기존의 Airflow에 저장되어 있는 DAG들을 하나씩 리팩토링하며 옮기고 있기 때문에, 당장 버전을 올리지는 않을 계획입니다.&lt;/p&gt;
+
+&lt;p&gt;기존 DAG을 옮기는 작업을 마치고, 운영에 노하우가 좀 더 생기면 Airflow 버전을 올리는 작업을 진행할 예정입니다. 만약 Airflow의 공식 Helm Chart가 공개되면 개발 환경에서 테스트한 뒤 도입할 계획입니다.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;이 글을 올리는 시점에 Airflow 2.1.0 버전으로 업그레이드 PoC 하고 있습니다.
+성공적으로 배포 및 운영 후 관련 글을 작성해보도록 하겠습니다.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;grafana-대시보드-고도화&quot;&gt;Grafana 대시보드 고도화&lt;/h3&gt;
+
+&lt;p&gt;현재 Grafana 대시보드는 Pod의 CPU, Memory 리소스 정도만 보여주고 있습니다.&lt;/p&gt;
+
+&lt;p&gt;앞으로는 DAG 별 평균 처리 시간, 평균 지연 시간, 리소스 사용량 등을 대시보드에서 모니터링할 수 있도록 고도화할 예정입니다. 당장은 문제가 없도록 리소스를 넉넉히 설정했지만, 모니터링 후에 리소스 최적량을 찾아 리소스 다이어트도 해야합니다. 결과적으로 성장하는 조직에 문제가 없도록 Kubernetes 클러스터와 Airflow 운영에 대해 계속해서 고민하고, 하나씩 구현하는 것이 다음의 목표입니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;cluster-보안-작업&quot;&gt;Cluster 보안 작업&lt;/h3&gt;
+
+&lt;p&gt;아직까지는 Kubernetes를 폭넓게 사용하고 있지는 않지만, 추후 Airflow를 비롯한 다른 서비스들을 GKE 클러스터에 배포할 예정입니다. 데이터 엔지니어링 팀은 앞으로 이 클러스터의 운영자로서 기본적인 보안 정책들을 잘 설정하고 관리할 책임을 느끼고 있습니다. Kubernetes RBAC 관리와 Security Policy, Secret 관리 등 보안적으로 이슈가 될만한 부분들을 점진적으로 개선할 준비를 하고 있습니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;마무리하며&quot;&gt;마무리하며&lt;/h2&gt;
+
+&lt;p&gt;이상 쏘카 데이터 그룹에서 Airflow를 구축했던 과정에 대한 글을 마무리하려고 합니다. 약 3년간 Airflow를 다양한 방식으로 운영하며, 점진적으로 개선한 이야기를 들려드렸습니다.&lt;/p&gt;
+
+&lt;p&gt;정리하면 다음과 같습니다.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;데이터 엔지니어링 팀이 없거나, 인원이 적은 경우엔 Managed Airflow인 Cloud Composer 또는 MWAA을 사용해 시간을 아끼는 방법&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Airflow 환경을 구축할 인원이 있는 경우 Compute Engine, EC2와 Docker Compose를 사용해 운영&lt;/p&gt;
+
+    &lt;ul&gt;
+      &lt;li&gt;
+        &lt;p&gt;Jupyter Notebook을 사용해 Airflow DAG 파일을 관리하는 방법&lt;/p&gt;
+      &lt;/li&gt;
+      &lt;li&gt;
+        &lt;p&gt;사용이 쉽지만 관리가 어려운 트레이드오프가 확실히 존재&lt;/p&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Kubernetes를 운영하며 위에서 발생하는 문제를 하나씩 해결하는 방법&lt;/p&gt;
+
+    &lt;ul&gt;
+      &lt;li&gt;DAG Branch 별 Airflow 배포&lt;/li&gt;
+      &lt;li&gt;CI/CD&lt;/li&gt;
+      &lt;li&gt;리소스 모니터링&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Airflow DAG을 더 잘 작성할 수 있는 가이드 마련&lt;/p&gt;
+
+    &lt;ul&gt;
+      &lt;li&gt;CLI 도구, 코드 리뷰, 포매터 설정 등&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;저희가 만든 방법이 항상 진리는 아니고, 서비스의 성장 시기와 조직의 인원 수에 따라 적절한 판단을 하는 것이 중요하다고 생각합니다. Airflow를 운영하려는 분들에게 저희의 경험이 도움이 되면 좋겠습니다. 
+혹시 데이터 엔지니어링팀이 하는 일이 궁금하시면 &lt;a href=&quot;https://tech.socarcorp.kr/data/2021/03/24/what-socar-data-engineering-team-does.html&quot;&gt;쏘카 데이터 그룹 - 데이터 엔지니어링 팀이 하는 일&lt;/a&gt; 글을 참고해주세요 😊&lt;/p&gt;
+
+&lt;p&gt;그동안 데이터 그룹에서 Airflow 환경을 구축하며 운영에 지속해서 노력하신 토마스, 제프, 플래시, 녹스, 하디, 험프리, 우민, 카일 모두 감사합니다. 또한 Airflow 관련 참고 자료들을 만들어주신 분들에게도 감사의 말씀을 전합니다.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;참고한-자료&quot;&gt;참고한 자료&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://engineering.linecorp.com/ko/blog/data-engineering-with-airflow-k8s-1/&quot;&gt;Line engineering 블로그 - Kubernetes를 이용한 효율적인 데이터 엔지니어링(Airflow on Kubernetes VS Airflow Kubernetes Executor) 시리즈&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://coffeewhale.com/kubernetes/gitops/argocd/2020/02/10/gitops-argocd/&quot;&gt;커피 고래님 블로그 - GitOps와 ArgoCD&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://swalloow.github.io/data-engineering-with-airflow-1/&quot;&gt;Swalloow님 블로그 - Airflow On Kubernetes 시리즈&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.slideshare.net/subicura/gitops-cicd-156402754&quot;&gt;Subicura님 발표자료 - 쿠버네티스를 이용한 기능 브랜치별 테스트 서버 만들기 (GitOps CI/CD)&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;</content><author><name>hardy</name></author><category term="data" /><category term="data" /><category term="data-engineering" /><summary type="html">안녕하세요. 데이터 엔지니어링팀의 하디입니다. 이번 글에서는 쏘카 데이터 그룹의 태동기(2018년)부터 현재(2021년)까지 어떻게 Airflow를 구축하고 운영했는지를 소개합니다. 특히 최근에 쏘카 데이터 그룹에 Kubernetes(정확히는 Google Kubernetes Engine)를 도입했는데, Kubernetes 위에서 Airflow를 어떻게 활용했는지에 대해 자세히 담아보려 노력했습니다.</summary></entry><entry><title type="html">쏘카 데이터 그룹 - 데이터 엔지니어링 팀이 하는 일</title><link href="https://tech.socarcorp.kr/data/2021/03/24/what-socar-data-engineering-team-does.html" rel="alternate" type="text/html" title="쏘카 데이터 그룹 - 데이터 엔지니어링 팀이 하는 일" /><published>2021-03-24T09:00:00+00:00</published><updated>2021-03-24T09:00:00+00:00</updated><id>https://tech.socarcorp.kr/data/2021/03/24/what-socar-data-engineering-team-does</id><content type="html" xml:base="https://tech.socarcorp.kr/data/2021/03/24/what-socar-data-engineering-team-does.html">&lt;p&gt;안녕하세요. 데이터 엔지니어링 팀에서 이제 막 신입 1년차를 마친 하디입니다.
+요즘 취업 준비하시는 분들에게 ‘데이터 엔지니어가 되려면 어떤 걸 준비해야 하나요?’라는 질문을 종종 받습니다. 그리고 데이터 엔지니어는 무슨 일을 하는지, 어떤 기술들을 다루는지 궁금해하시는 분들도 많은 것 같습니다.&lt;/p&gt;
+
+&lt;p&gt;이번 글에서는 &lt;strong&gt;쏘카의 데이터 엔지니어링 팀은 무슨 일을 하고, 어떤 이슈를 다루는지를 소개합니다.&lt;/strong&gt; (데이터 엔지니어 역할, 데이터 엔지니어 업무)&lt;/p&gt;
+
+&lt;p&gt;기술적으로 매우 세세한 부분보다는 전체적으로 어떤 일들을 하는지, 어떤 이슈를 다루는지 위주로 적어보았습니다.
+평소 데이터 엔지니어링이 어떤 일을 하는지 궁금해하시던 분들에게 도움이 되기를 바래봅니다.&lt;/p&gt;
+
+&lt;h2 id=&quot;목차&quot;&gt;목차&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;데이터 그룹과 데이터 엔지니어링 팀&lt;/li&gt;
+  &lt;li&gt;데이터 엔지니어링 팀 업무
+    &lt;ul&gt;
+      &lt;li&gt;1) 자유로운 통합 데이터 분석 환경 만들기&lt;/li&gt;
+      &lt;li&gt;2) 데이터 지표와 보고서 만들기&lt;/li&gt;
+      &lt;li&gt;3) 데이터 기반의 백엔드 서비스 개발 및 운영&lt;/li&gt;
+      &lt;li&gt;4) 데이터 그룹의 인프라/리소스 관리&lt;/li&gt;
+      &lt;li&gt;정리&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;앞으로 목표와 할 일들&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;데이터-그룹과-데이터-엔지니어링-팀&quot;&gt;데이터 그룹과 데이터 엔지니어링 팀&lt;/h2&gt;
+
+&lt;p&gt;데이터 엔지니어링 팀을 말하기 앞서, 팀의 소속 그룹인 데이터 그룹에 대해 먼저 간략히 소개합니다.&lt;br /&gt;
+현재 데이터 그룹은 크게 다음과 같이 구성되어 있습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;데이터 분석 팀
+    &lt;ul&gt;
+      &lt;li&gt;현업 부서의 운영을 효율화 및 자동화하기 위한 데이터 분석 및 머신러닝/딥러닝/최적화 모델링을 수행합니다.&lt;/li&gt;
+      &lt;li&gt;사고 리스크, 차량 파손 탐지, 보험 사기 탐지, 타다 재배치, Fleet 효율화 모델 개발 및 최적화 등을 운영하고 있습니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;비즈니스 데이터 팀
+    &lt;ul&gt;
+      &lt;li&gt;비즈니스 사업 분야에서의 최적의 손익을 이끌어 낼 수 있는 솔루션 제시합니다.&lt;/li&gt;
+      &lt;li&gt;비즈니스 현황 분석을 진행한 후, 담당 부서와 액션 아이템을 도출합니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;데이터 엔지니어링 팀
+    &lt;ul&gt;
+      &lt;li&gt;데이터 분석가 및 사내 다양한 팀들이 손쉽게 서비스 데이터를 다루고 분석할 수 있는 기반을 마련합니다.&lt;/li&gt;
+      &lt;li&gt;데이터 분석팀들이 만든 모델 혹은 비즈니스 로직을 실제로 적용할 수 있도록 백엔드 서비스를 개발하고 환경을 구축합니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;데이터 엔지니어링 팀의 기본적인 임무는 다른 팀을 위한 “지원” 입니다.&lt;/strong&gt; 동시에 이 지원을 어떻게 하면 효율적으로 처리시킬 수 있을지에 대해서 고민하고 해결합니다. 여기에는 데이터 적재의 자동화, 속도와 확장 가능성을 고려한 운영, 그리고 개발과 인프라에 대한 것들이 포함되어 있습니다.&lt;/p&gt;
+
+&lt;p&gt;이제 데이터 엔지니어링 팀이 어떤 고민을 하고, 어떤 문제들을 풀어가는지 아래에서 살펴보겠습니다.&lt;/p&gt;
+
+&lt;h2 id=&quot;데이터-엔지니어링-팀-업무&quot;&gt;데이터 엔지니어링 팀 업무&lt;/h2&gt;
+
+&lt;h3 id=&quot;자유로운-통합-데이터-분석-환경-만들기&quot;&gt;자유로운 통합 데이터 분석 환경 만들기&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/what-socar-data-engineering-team-does/datalake-pipeline.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;데이터 엔지니어링 팀의 첫 번째 고민은 ‘자유로운 통합 데이터 분석 환경을 어떻게 만들 수 있을 것인가?’입니다.&lt;br /&gt;
+보통 IT 서비스 회사들은 서비스를 먼저 배포, 운영한 후에 사업적 고도화를 위해 데이터 분석을 시도해보려고 합니다.&lt;br /&gt;
+이 때 별도의 분석 환경 없이 서비스의 데이터 저장소에 접근하여 데이터를 분석하려고 하면 크게 2가지의 이슈를 만나게 됩니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;실시간으로 유저에게 서비스 되고 있는 데이터 저장소에 직접 접근하는 것은 위험하다.
+    &lt;ul&gt;
+      &lt;li&gt;분석 중 자칫 잘못하다가 데이터를 오염(수정 혹은 삭제)시킬 수 있습니다.&lt;/li&gt;
+      &lt;li&gt;데이터를 조회하기 위해 사용하는 쿼리가 DB에 부하를 주는 경우, 운영중인 서비스의 성능에 영향을 줍니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;분석하고자 하는 데이터가 산발적으로 퍼져있어, 통합적으로 분석하기가 어렵다.
+    &lt;ul&gt;
+      &lt;li&gt;예를 들어 서비스 A는 MySQL을 사용하고 있고, 서비스 B는 MongoDB를 사용하고 있는 경우, A의 데이터와 B의 데이터를 하나의 쿼리로 조회하기가 어렵습니다.&lt;/li&gt;
+      &lt;li&gt;애초에 모든 서비스가 MySQL만 사용하면 되겠다고 생각할 수 있지만, 서비스를 개발할 당시에는 이런 통합 데이터 저장소를 고려하지 않는 경우가 대부분이고 하나의 데이터 저장소만 사용해서는 안되는 경우도 존재합니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;이 이슈들은 두 가지 필요성을 느끼게 해줍니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;서비스 운영 DB가 아닌 별도의 저장소에서 분석 환경이 필요합니다.&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;여기저기 퍼져있는 데이터들을 한 군데(별도의 저장소)로 모아야 합니다.&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;쏘카 데이터 엔지니어링 팀은 별도의 통합 저장소로 &lt;a href=&quot;https://cloud.google.com/bigquery?hl=ko&quot;&gt;Google Cloud Platform의 BigQuery&lt;/a&gt;를 사용합니다.&lt;br /&gt;
+그리고 데이터를 모으는데 사용하는 워크플로우 툴로 &lt;a href=&quot;https://airflow.apache.org/&quot;&gt;Apache Airflow&lt;/a&gt;를 사용하고 있습니다.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;strong&gt;* BigQuery와 Airflow를 선택한 이유는?&lt;/strong&gt;&lt;/p&gt;
+
+  &lt;p&gt;BigQuery는 대용량 데이터 분석 목적으로 개발된 GCP의 클라우드 서비스입니다.&lt;br /&gt;
+BigQuery를 선택한 이유를 한마디로 표현하면, 당장 사용하기 쉽고 인프라나 운영에 크게 신경쓸 것이 없기 때문입니다. 또한 비용도 저렴하고 쿼리 속도도 뛰어납니다.&lt;/p&gt;
+
+  &lt;p&gt;Airflow는 Airbnb에서 개발한 파이썬 기반의 배치성 파이프라인 프레임워크입니다.&lt;br /&gt;
+비슷한 툴로는 Luigi, Argo Workflow 등이 있습니다.&lt;br /&gt;
+Airflow를 선택한 이유는 팀원들 대부분 파이썬에 익숙했고, Airflow로 파이프라인을 만드는데 그리 큰 시간이 들지 않았기 때문입니다. 더불어 오픈소스라 무료로 사용 가능하고, 원하는대로 커스터마이징이 가능합니다. 또한 Github에서 많은 수의 Star를 받은 만큼, 다른 프레임워크에 비해 커뮤니티가 잘 활성화되어 있습니다. 따라서 트러블 슈팅하는데 필요한 자료를 찾기가 용이합니다.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;통합 데이터 저장소에 저장할 데이터는 필요에 따라 쏘카의 여러 서비스에서 가져옵니다. &lt;br /&gt;
+특히 쏘카 서비스는 내부적으로 MSA(Micro Service Architecture) 형태로 설계되어 있기 때문에 서비스나 서비스의 버전에 따라 데이터 소스(DB 등)가 다른 경우가 많습니다. 이렇게 데이터 소스에 따라 어떻게 효율적으로 데이터를 가져올지 고민하며 파이프라인을 구성해야 합니다.&lt;br /&gt;
+예를 들면 다음과 같은 것들을 고려해야 합니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;1) 데이터 소스가 어떤 형태(RDB? NoSQL? 혹은 파일?)고 어떻게 가져오는게 가장 최적화된 방법일까?&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;2) 한 번에 가져오는 데이터양이 너무 많아서 처리 속도 혹은 메모리에 문제는 없나? 있다면 어떻게 해결해야 할까?&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;3) 데이터 소스가 서비스 DB인 경우, 부하를 주지 않으면서 빠르게 데이터를 가져오려면 어떻게 해야 할까?&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;4) 서비스 DB에서 UPDATE, DELETE가 수행되어도 일관성 있게 데이터를 가져오려면 어떻게 해야 할까?&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;5) 파이프라인을 재 실행해도 데이터를 멱등하게 수집하려면 어떻게 해야 할까?&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;필요한 데이터를 가져오는게 너무 복잡하거나 공공 데이터(날씨 등) 수집이 필요한 경우 관련 코드를 직접 작성하기도 합니다. 이 경우 처리 속도, 메모리 사용량 등의 컴퓨팅 리소스와 코드의 가독성, 재사용성 등의 지속 가능한 개발을 고려하며 모듈을 개발합니다. 이러한 모듈은 팀 내 리뷰를 거쳐 메인 코드 저장소(Github)에서 관리되고 있습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/what-socar-data-engineering-team-does/datalake-diagram.001.jpeg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;데이터 파이프라인은 Apache Airflow의 DAG 코드(파이썬 코드)를 작성해서 만들 수 있습니다. Airflow는 기본적으로 데이터 파이프라인 작성을 위한 &lt;a href=&quot;https://airflow.apache.org/docs/apache-airflow/1.10.14/_api/airflow/operators/index.html&quot;&gt;여러 클래스와 함수들(Operator)&lt;/a&gt;을 제공해줍니다. 이 클래스와 함수들을 적절히 이용하거나 직접 필요한 모듈을 작성하여 파이프라인을 구성합니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/what-socar-data-engineering-team-does/airflow.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;단순히 데이터를 한 군데로 모으는 것을 넘어서, 사내에서 자주 사용되는 &lt;strong&gt;데이터를 별도로 정제 및 집계하여 일종의 데이터 마트로 만들기도 합니다.&lt;/strong&gt; 쏘카의 “SODA Store”가 바로 그 대표적인 예입니다. SODA Store는 SOCAR Data Store의 약자로 쏘카의 구성원들이 복잡한 데이터를 쉽고 편하게 조회할 수 있도록 만든 데이터 마트입니다.&lt;/p&gt;
+
+&lt;p&gt;SODA Store가 등장하기 전에는 원하는 차량 예약 관련 데이터를 보기 위한 쿼리는 500줄이 넘곤 했습니다. 이 500줄 쿼리를 직접 짜거나 다른 팀원에게 전달받아야만 했죠. 이에 전사적으로 구성원들이 자주 조회하는 결과 테이블을 미리 만들어 두었고, 이 결과로 SODA Store가 등장하게 되었습니다. 이제 500줄이 아닌 몇 줄의 쿼리로 필요한 데이터를 빠르게 조회할 수 있습니다. 또한 쏘카 서비스 내의 필요한 데이터를 찾기 위해 힘들게 모든 테이블을 살펴보지 않고, 이 SODA Store에서 우선적으로 필요한 데이터를 찾아볼 수 있습니다. 데이터 탐색 시간은 줄어들고, 사용법도 편해졌습니다. 쏘카 직원이라면 누구나 쉽게 이 데이터 마트를 통해, 필요한 데이터를 볼 수 있습니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/what-socar-data-engineering-team-does/datamart.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;정리하면, 데이터 엔지니어링 팀은 &lt;strong&gt;서비스의 다양한 데이터를 한 곳으로 모아두는 작업&lt;/strong&gt;을 담당합니다. 또한 더 쉽게 데이터를 조회할 수 있도록 데이터 마트를 만듭니다. 쉽게 데이터를 조회하고 분석할 수 있는 환경을 지속해서 만드는 것이 데이터 엔지니어링 팀의 미션입니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;데이터-지표와-보고서-만들기&quot;&gt;데이터 지표와 보고서 만들기&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/what-socar-data-engineering-team-does/data-report-pipeline.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;데이터 엔지니어링 팀의 두 번째 업무는 &lt;strong&gt;분석 환경 구축을 넘어 실제 비즈니스 목적을 가진 분석 지표와 보고서를 만드는 일&lt;/strong&gt;입니다. 이 보고서들은 실제 도메인 담당자들이 의사 결정할 때 사용됩니다. “이전 달 손익 지표 보고서”, “최근 일주일간 가동률 보고서” 등이 대표적인 예입니다.&lt;/p&gt;
+
+&lt;p&gt;하나의 보고서는 보기 좋은 테이블이나 그래프로 보이지만, 사실 이 보고서를 만들기 위해 여러 작업이 필요합니다. 먼저 보고서를 요청한 팀, 예를 들면 운영 본부나 사업 본부와 같은 팀과 미팅을 통해 보고서의 목적을 확인하고 이와 관련된 지표를 정합니다. 이후 관련 데이터들을 전처리하는 로직을 설계합니다. 이 로직을 기반으로 기반 데이터를 만들고, 이 기반 데이터를 가공해 최종적으로  사용 가능한 데이터를 만듭니다. 마지막으로 최종 결과물인 보고서를 요청한 팀에게 전달하고 피드백을 받습니다. 이런 과정은 한번으로 끝나는 게 아니라, 지속적으로 이루어지기 때문에 관련 지표와 로직은 일관성 있고 확장 가능하도록 설계해야 합니다. 이런 경우엔 다음과 같은 내용을 고민하게 됩니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;어느 정도로 태스크를 쪼개야 유지보수와 재사용이 쉬울까?&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;쿼리는 어떻게 구조화하고 최적화해야 읽기도 좋고 성능도 좋을까?&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;어느 시간대에 어떤 순서로 실행해야 올바르게 파이프라인이 동작할까?&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;이런 기술적 고민과 함께 관련 팀과 미팅, 올바른 지표 설계, 워크플로우 설계, 최종 보고서 구현 모두 데이터 엔지니어링 팀이 진행하고 있습니다.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;strong&gt;* 지표 및 보고서를 만들 때 어떤 도구를 사용하나요?&lt;/strong&gt;&lt;/p&gt;
+
+  &lt;p&gt;쏘카에서는 다음과 같은 툴을 사용합니다.&lt;br /&gt;
+모두 빅쿼리와 연결이 쉽고, 보고서 업데이트 스케쥴링 기능을 지원합니다.&lt;/p&gt;
+
+  &lt;p&gt;&lt;a href=&quot;https://www.google.com/sheets/about/&quot;&gt;구글 스프레드 시트&lt;/a&gt; : 테이블 형태로 여러 지표 값을 한눈에 보고자 할 때 주로 사용합니다. 대부분의 쏘카 구성원들이 구글 스프레드 시트를 이용하고 있어서 접근성과 이용성 모두 좋습니다.&lt;/p&gt;
+
+  &lt;p&gt;&lt;a href=&quot;https://marketingplatform.google.com/intl/ko/about/data-studio/&quot;&gt;구글 데이터 스튜디오&lt;/a&gt; : 간단하게 지표를 시각화할 때 주로 사용합니다. 구글 스프레드시트보다 나은 시각화 템플릿을 제공하며 필터링 및 파라미터 관련 기능들을 구현하기 쉽습니다.&lt;/p&gt;
+
+  &lt;p&gt;&lt;a href=&quot;https://www.tableau.com/ko-kr&quot;&gt;태블로&lt;/a&gt; : 구글 데이터 스튜디오에서 구현하기 어려운 보고서를 만들거나 요청 팀에서 구글 데이터 스튜디오보다 태블로를 선호하는 경우 사용합니다. 태블로는 더 다양한 시각화 템플릿을 사용할 수 있고, 더 정밀한 서식 설정이 가능합니다. 다만 태블로는 구글 플랫폼에 소속된 서비스가 아니라서 앞에 두 툴에 비해 접근성 및 이용성이 상대적으로 떨어지는 편입니다.&lt;/p&gt;
+
+  &lt;p&gt;보고서를 보는 대상이나 표현하려는 지표의 형태에 따라 툴을 선택합니다.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;데이터-기반의-백엔드-서비스-개발-및-운영&quot;&gt;데이터 기반의 백엔드 서비스 개발 및 운영&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/what-socar-data-engineering-team-does/backend.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;데이터 그룹에서 만든 &lt;strong&gt;분석 및 모델링 결과를 서비스에 반영하기 위한 백엔드 서비스 역시 데이터 엔지니어링 팀이 담당하고 있습니다.&lt;/strong&gt; 쏘카의 “대여 가격 시스템”, “면책 요금 시스템”, “차량 파손 탐지 시스템” 이 그 대표적인 예입니다. 이 시스템들은 MSA 형태로 쏘카 서비스의 필요한 모든 것을 구현하는 것이 아니라, 데이터 기반 의사결정이 필요한 도메인 로직만 분리해 처리합니다.&lt;/p&gt;
+
+&lt;p&gt;차량 파손을 탐지하는 머신러닝 모델을 서빙하는 백엔드 서비스인 “차량 파손 탐지 시스템”의 경우를 예를 들어보겠습니다.&lt;br /&gt;
+먼저 서비스를 사용하는 관련 부서와 어떤 기능이 필요한지 논의하고, 요구사항을 정리합니다. 이후 서버 개발팀과 어떤 통신 형태를 사용할지(HTTP API 형태로 주고 받을지? gRPC를 사용할지?), 인터페이스는 어떻게 할지 논의합니다. 차량 파손 탐지는 딥러닝 모델을 기반으로 이뤄지기 때문에, 모델 학습과 예측 결과에 대해 데이터 분석 팀과도 논의합니다. 이러한 논의 끝에, 백엔드 서비스를 개발하고  Kubernetes 환경에 배포합니다. 이후 지속적으로 모니터링하며 에러는 없는지, 리소스 사용량에 문제는 없는지 등을 확인합니다.
+(&lt;a href=&quot;https://tech.socarcorp.kr/data/2020/03/10/ml-model-serving.html&quot;&gt;쏘카 테크 블로그의 “딥러닝 모델 Serving 간단 구축기”&lt;/a&gt;를 보시면 이에 대해 자세히 보실 수 있습니다.)&lt;/p&gt;
+
+&lt;p&gt;서비스가 성장하며 계속해서 추가 기능을 개발하고 운영해야 하므로 쉬운 &lt;strong&gt;유지 보수를 위한 클린 코드, 아키텍처나 CI/CD를 고민하며 백엔드 서비스를 개발합니다.&lt;/strong&gt; 데이터 분석 팀 혹은 비즈니스 데이터 팀의 비즈니스 로직과 요구사항이 계속해서 바뀌는 경우가 많기 때문에 늘 변화를 염두에 두고 유연한 코드를 설계하는데 관심을 두고 있습니다. 일례로 최근에 도메인 주도 설계(DDD) 패턴을 적용하여 “면책 요금 시스템”을 리팩토링 한 바 있습니다. 또한 유저에게 바로 노출되는 서비스인 만큼 처리 속도 역시 신경 써야 하며 로직 최적화 및 캐싱 기법 등에도 관심을 두며 스터디하고 가능한 대안을 적용하고 있습니다. 최종적으로는 쿠버네티스에 올라가기 때문에 리소스 사용량은 얼마나 되는지, 급격한 사용량에 대해 잘 대처할 수는 있는지를 고민하며 해당 내용을 인프라팀과 논의 후 결정하곤 합니다.&lt;/p&gt;
+
+&lt;p&gt;이 외에도 데이터 엔지니어링 팀은 &lt;strong&gt;데이터 그룹에 도움이 되는 파이썬 모듈 개발이나 기술 문화를 도입에 힘쓰고 있습니다.&lt;/strong&gt; 이처럼 그룹의 전반적인 엔지니어링 스킬을 올리고 선도하는 것도 데이터 엔지니어링 팀의 역할입니다.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;strong&gt;* 주로 어떤 언어, 프레임 워크, 툴로 개발 및 배포하나요?&lt;/strong&gt;&lt;/p&gt;
+
+  &lt;p&gt;현재는 주로 파이썬으로 개발합니다. 
+제한된 시간 안에 적은 인원으로 빠르게 성과물을 낼 수 있고, 팀원들이 파이썬에 더 익숙하기 때문입니다.&lt;/p&gt;
+
+  &lt;p&gt;프레임워크는 때에 따라 다릅니다. 
+HTTP 통신 프레임워크로는 flask를 씁니다. (최근에는 FastAPI 를 사용해보려고 하고 있습니다.) RPC 통신은 gRPC를 주로 사용합니다.&lt;br /&gt;
+쏘카 시스템 전체가 MSA로 설계된 만큼, 이러한 툴 사용은 필요와 요구사항에 따라 달라집니다. &lt;br /&gt;
+프로그래밍 언어 역시 필요에 따라 바꿀 수 있다는 생각을 하고 있습니다.&lt;/p&gt;
+
+  &lt;p&gt;CI/CD 파이프라인 툴은 전사적으로 &lt;a href=&quot;https://app.buddy.works/&quot;&gt;BuddyWorks&lt;/a&gt; 를 사용합니다.&lt;br /&gt;
+BuddyWorks 는 자유도에 제한이 있고 유료이기는 하지만 쉽고 빠르게 CI/CD 파이프라인을 구축할 수 있습니다.&lt;br /&gt;
+데이터 그룹에 한해 배포 툴은 별도로 ArgoCD 를 사용하며 Git-ops 형태로 운영하고 있습니다.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;데이터-그룹의-인프라리소스-관리&quot;&gt;데이터 그룹의 인프라/리소스 관리&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/what-socar-data-engineering-team-does/infra.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;쏘카 데이터 그룹은 빅쿼리를 사용한 분석 작업이 많아서 자연스럽게 Google Cloud Platform의 managed service를 다양하게 사용하고 있습니다(PubSub, Cloud Function, Dataproc, Dataflow, Data Studio 등). GCP와 관련된 인프라 구축은 인프라팀의 도움을 받지만, 실 서비스 운영 및 관리는 데이터 엔지니어링 팀이 주로 담당하고 있습니다.&lt;/p&gt;
+
+&lt;p&gt;주로 다음과 같은 항목들을 다룹니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;데이터 그룹원들이 사용하는 &lt;strong&gt;Computing Resource, BigQuery 사용량, 데이터 정합성 검사, 그리고 네트워크 방화벽을 회사 방침에 맞게 잘 사용하는지 등을 모니터링합니다.&lt;/strong&gt;
+    &lt;ul&gt;
+      &lt;li&gt;Computing Resource, BigQuery를 과도하게 사용하는 경우, 알람 메시지가 오도록 설정해둡니다.&lt;/li&gt;
+      &lt;li&gt;이 알람을 통해 Computing Resource 관련 장애를 미연에 방지할 수 있습니다.&lt;/li&gt;
+      &lt;li&gt;BigQuery 관련 사용 요금을 미리 알 수 있고 과금되는 것을 막을 수 있어, 데이터 그룹 구성원들이 비교적 마음 편하게 쿼리를 날릴 수 있습니다.&lt;/li&gt;
+      &lt;li&gt;BigQuery에 데이터가 잘 적재되었는지 정합성 검사를 통해 주기적으로 확인할 수 있습니다.&lt;/li&gt;
+      &lt;li&gt;네트워크 방화벽을 모니터링하여 보안에 문제가 없는지 주기적으로 확인할 수 있습니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;GKE(Google Kubernetes Engine) 환경에서 &lt;strong&gt;필요한 리소스 할당 및 일관된 템플릿을 제공&lt;/strong&gt;해주고, GKE에 배포하는 파이프라인을 설계 및 가이드합니다.
+    &lt;ul&gt;
+      &lt;li&gt;배포 파이프라인을 만들거나 혹은 데이터 그룹 구성원이 직접 만들 수 있도록 가이드합니다.&lt;/li&gt;
+      &lt;li&gt;현재 배포는 Git-ops 형태로 관리하고 있으며, helm chart나 commit 메시지 등을 일관되게 구성하도록 관리합니다.&lt;/li&gt;
+      &lt;li&gt;GKE에 올라가는 차트를 작성, 관리합니다. 예를 들면 Airflow와 관련된 Helm chart를 직접 커스터마이징하여 운영합니다.&lt;/li&gt;
+      &lt;li&gt;더 나은 개발 환경과 배포 파이프라인은 없는지 계속해서 고민하고 리서치합니다.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;그 외 VPC 설정 및 쏘카의 개발 인프라인 AWS와의 연동 작업 관리 등을 담당합니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;정리&quot;&gt;정리&lt;/h2&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/what-socar-data-engineering-team-does/all-in-one-diagram.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;데이터 엔지니어링 팀의 업무를 정리하면 다음과 같습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;전사 직원을 위한 통합 데이터 저장소 마련&lt;/strong&gt;
+    &lt;ul&gt;
+      &lt;li&gt;다양한 데이터 소스의 통합 데이터 저장소로 이동하는 파이프라인 설계&lt;/li&gt;
+      &lt;li&gt;좀 더 편리한 분석을 위한 데이터 마트 구축&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;타 부서를 위한 지표, 시각화 및 보고서 개발&lt;/strong&gt;
+    &lt;ul&gt;
+      &lt;li&gt;보고서의 데이터가 지속적으로 업데이트되는 파이프라인 설계&lt;/li&gt;
+      &lt;li&gt;업무 규칙 협의, 지표 및 데이터 검증&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;데이터 기반의 백엔드 서비스 개발 및 운영&lt;/strong&gt;
+    &lt;ul&gt;
+      &lt;li&gt;데이터 그룹 내 오퍼레이션, 머신러닝을 서빙하는 백엔드 서비스 개발&lt;/li&gt;
+      &lt;li&gt;지속적이고 유지보수가 쉬운 개발 방법론 연구 및 적용&lt;/li&gt;
+      &lt;li&gt;운영에 차질이 없도록 로그, 리소스 모니터링&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;데이터 그룹 인프라 및 리소스 관리&lt;/strong&gt;
+    &lt;ul&gt;
+      &lt;li&gt;GCP 서비스 운영 및 관리&lt;/li&gt;
+      &lt;li&gt;리소스, 네트워크, 빅쿼리 사용량 모니터링&lt;/li&gt;
+      &lt;li&gt;GKE에 올라가는 helm chart 및 리소스 관리&lt;/li&gt;
+      &lt;li&gt;개발 환경과 배포 파이프라인(CI/CD) 관리&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;앞으로-목표와-할-일들&quot;&gt;앞으로 목표와 할 일들&lt;/h2&gt;
+
+&lt;h3 id=&quot;gke-환경과-airflow-on-gke&quot;&gt;GKE 환경과 Airflow on GKE&lt;/h3&gt;
+
+&lt;p&gt;쏘카 서비스가 계속해서 성장하면서, 작년 말부터 GCP에서 쿠버네티스를 사용하기 위해 GKE를 세팅 및 운영하는 작업을 지속적으로 해오고 있습니다. 데이터 파이프라인 역시 점점 파이프라인 개수가 증가하고 고성능이 요구됨에 따라, 기존의 단일 컴퓨팅 환경으로 운영되었던 Airflow를 쿠버네티스 환경으로 옮기고 있습니다. 최종적으로는 데이터 파이프라인을 포함한 모든 GCE 리소스를 GKE로 옮기고, 엔지니어링 팀에서 클러스터를 잘 운영하는 것이 목표입니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;타다-데이터-엔지니어링&quot;&gt;타다 데이터 엔지니어링&lt;/h3&gt;
+
+&lt;p&gt;올해 초부터 타다 서비스의 데이터 엔지니어링 업무를 쏘카 데이터 엔지니어링 팀이 맡게 되었습니다. 이에 따라 업무의 범위는 수평적으로 더 늘어나, 타다 서비스의 데이터 파이프라인을 개선할 계획입니다. 타다 서비스의 특성에 맞게 배치성 데이터 외에도 스트리밍 데이터를 더 다뤄보고 개발할 기회를 가지게 되었습니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;그-외&quot;&gt;그 외&lt;/h3&gt;
+
+&lt;p&gt;그 밖에도 기존에 개발한 백엔드 서비스의 데이터가 점점 더 많아지고 있으며, 어떻게 하면 효율적으로 결과물을 서비스할지 공부하고 적용해보고 있습니다. 이렇게 운영한 경험을 바탕으로 새로운 데이터 기반의 백엔드 서비스를 만들어야 할 업무들도 이미 백로그에 존재합니다.&lt;/p&gt;
+
+&lt;p&gt;더 커지는 사업 규모, 더 늘어나는 트래픽, 발전하는 머신러닝 모델링에 맞춰 데이터 엔지니어링 팀은 운영이 용이한 데이터 파이프라인, 잘 개발된 백엔드 서비스, 더 나아가 MLOps까지 커버하는 것을 목표로 하고 있습니다. 더불어, 빠른 시간 안에 필요에 따라 적절하게 엔지니어링하고 서비스에 문제없이 운영해나가는 것이 데이터 엔지니어링 팀의 주된 목표입니다.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;쏘카 데이터 엔지니어링 팀은 채용 중입니다.&lt;br /&gt;
+&lt;a href=&quot;http://bit.ly/socar-data-engineer-recruitement&quot;&gt;쏘카(SOCAR) - 데이터 엔지니어 채용 공고 링크&lt;/a&gt;&lt;/p&gt;
+&lt;/blockquote&gt;</content><author><name>hardy</name></author><category term="data" /><category term="data" /><category term="data-engineering" /><summary type="html">안녕하세요. 데이터 엔지니어링 팀에서 이제 막 신입 1년차를 마친 하디입니다. 요즘 취업 준비하시는 분들에게 ‘데이터 엔지니어가 되려면 어떤 걸 준비해야 하나요?’라는 질문을 종종 받습니다. 그리고 데이터 엔지니어는 무슨 일을 하는지, 어떤 기술들을 다루는지 궁금해하시는 분들도 많은 것 같습니다.</summary></entry></feed>
